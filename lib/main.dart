@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'firebase_options.dart';
 import 'models/user_model.dart';
 import 'services/auth_service.dart';
 import 'services/data_service.dart';
@@ -8,7 +10,11 @@ import 'screens/auth/login_screen.dart';
 import 'screens/owner/owner_dashboard.dart';
 import 'screens/driver/driver_dashboard.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const FleetCheckerApp());
 }
 
@@ -20,7 +26,7 @@ class FleetCheckerApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
-        ChangeNotifierProvider(create: (_) => DataService()),
+        Provider(create: (_) => DataService()),
       ],
       child: MaterialApp(
         title: 'Fleet Checker',
@@ -38,6 +44,12 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
+
+    if (!auth.initialized) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     if (!auth.isLoggedIn) {
       return const LoginScreen();

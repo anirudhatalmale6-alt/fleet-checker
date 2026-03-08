@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Van {
   final String id;
   String registration;
@@ -7,6 +9,7 @@ class Van {
   String? assignedDriverId;
   String? assignedDriverName;
   final String ownerId;
+  String vehicleType;
   final DateTime createdAt;
 
   Van({
@@ -18,13 +21,13 @@ class Van {
     this.assignedDriverId,
     this.assignedDriverName,
     required this.ownerId,
+    this.vehicleType = 'Van',
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
   String get displayName => '$make $model ($registration)';
 
   Map<String, dynamic> toMap() => {
-        'id': id,
         'registration': registration,
         'make': make,
         'model': model,
@@ -32,6 +35,24 @@ class Van {
         'assignedDriverId': assignedDriverId,
         'assignedDriverName': assignedDriverName,
         'ownerId': ownerId,
-        'createdAt': createdAt.toIso8601String(),
+        'vehicleType': vehicleType,
+        'createdAt': Timestamp.fromDate(createdAt),
       };
+
+  factory Van.fromMap(Map<String, dynamic> map, String id) {
+    return Van(
+      id: id,
+      registration: map['registration'] ?? '',
+      make: map['make'] ?? '',
+      model: map['model'] ?? '',
+      mileage: map['mileage'] ?? 0,
+      assignedDriverId: map['assignedDriverId'],
+      assignedDriverName: map['assignedDriverName'],
+      ownerId: map['ownerId'] ?? '',
+      vehicleType: map['vehicleType'] ?? 'Van',
+      createdAt: map['createdAt'] is Timestamp
+          ? (map['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+    );
+  }
 }

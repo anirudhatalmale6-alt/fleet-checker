@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
 import '../../models/van_model.dart';
 import '../../models/inspection_model.dart';
 import '../../services/auth_service.dart';
@@ -43,26 +42,31 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
     if (_step > 0) setState(() => _step--);
   }
 
-  void _submit() {
+  bool _submitting = false;
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+
     final auth = context.read<AuthService>();
     final data = context.read<DataService>();
     final user = auth.currentUser!;
     final hasFails = _checklist.any((c) => c.status == CheckStatus.fail);
 
-    final inspection = Inspection(
-      id: const Uuid().v4(),
+    await data.addInspection(
       vanId: widget.van.id,
       vanRegistration: widget.van.registration,
       driverId: user.id,
       driverName: user.name,
-      date: DateTime.now(),
+      ownerId: widget.van.ownerId,
       mileage: int.parse(_mileageCtrl.text),
       checklist: _checklist,
-      generalNotes: _notesCtrl.text.isNotEmpty ? _notesCtrl.text : null,
       status: hasFails ? InspectionStatus.failed : InspectionStatus.passed,
+      generalNotes: _notesCtrl.text.isNotEmpty ? _notesCtrl.text : null,
     );
 
-    data.addInspection(inspection);
+    if (!mounted) return;
+    setState(() => _submitting = false);
 
     showDialog(
       context: context,
@@ -135,14 +139,19 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: _step < 3 ? _next : _submit,
+                      onPressed: _submitting ? null : (_step < 3 ? _next : _submit),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         backgroundColor:
                             _step == 3 ? AppTheme.success : AppTheme.accent,
                       ),
-                      child:
-                          Text(_step < 3 ? 'Next' : 'Submit Inspection'),
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : Text(_step < 3 ? 'Next' : 'Submit Inspection'),
                     ),
                   ),
                 ],

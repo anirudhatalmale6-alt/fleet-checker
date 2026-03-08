@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum CheckStatus { pass, fail, na }
 
 class ChecklistItem {
@@ -16,6 +18,14 @@ class ChecklistItem {
         'status': status.name,
         'notes': notes,
       };
+
+  factory ChecklistItem.fromMap(Map<String, dynamic> map) {
+    return ChecklistItem(
+      name: map['name'] ?? '',
+      status: CheckStatus.values.byName(map['status'] ?? 'pass'),
+      notes: map['notes'],
+    );
+  }
 }
 
 enum InspectionStatus { passed, failed }
@@ -26,6 +36,7 @@ class Inspection {
   final String vanRegistration;
   final String driverId;
   final String driverName;
+  final String? ownerId;
   final DateTime date;
   final int mileage;
   final List<ChecklistItem> checklist;
@@ -39,6 +50,7 @@ class Inspection {
     required this.vanRegistration,
     required this.driverId,
     required this.driverName,
+    this.ownerId,
     required this.date,
     required this.mileage,
     required this.checklist,
@@ -47,22 +59,46 @@ class Inspection {
     required this.status,
   });
 
-  int get passCount => checklist.where((c) => c.status == CheckStatus.pass).length;
-  int get failCount => checklist.where((c) => c.status == CheckStatus.fail).length;
+  int get passCount =>
+      checklist.where((c) => c.status == CheckStatus.pass).length;
+  int get failCount =>
+      checklist.where((c) => c.status == CheckStatus.fail).length;
 
   Map<String, dynamic> toMap() => {
-        'id': id,
         'vanId': vanId,
         'vanRegistration': vanRegistration,
         'driverId': driverId,
         'driverName': driverName,
-        'date': date.toIso8601String(),
+        'ownerId': ownerId,
+        'date': Timestamp.fromDate(date),
         'mileage': mileage,
         'checklist': checklist.map((c) => c.toMap()).toList(),
         'generalNotes': generalNotes,
         'photoUrls': photoUrls,
         'status': status.name,
       };
+
+  factory Inspection.fromMap(Map<String, dynamic> map, String id) {
+    return Inspection(
+      id: id,
+      vanId: map['vanId'] ?? '',
+      vanRegistration: map['vanRegistration'] ?? '',
+      driverId: map['driverId'] ?? '',
+      driverName: map['driverName'] ?? '',
+      ownerId: map['ownerId'],
+      date: map['date'] is Timestamp
+          ? (map['date'] as Timestamp).toDate()
+          : DateTime.now(),
+      mileage: map['mileage'] ?? 0,
+      checklist: (map['checklist'] as List<dynamic>?)
+              ?.map((c) => ChecklistItem.fromMap(c as Map<String, dynamic>))
+              .toList() ??
+          [],
+      generalNotes: map['generalNotes'],
+      photoUrls: List<String>.from(map['photoUrls'] ?? []),
+      status: InspectionStatus.values.byName(map['status'] ?? 'passed'),
+    );
+  }
 
   static List<ChecklistItem> defaultChecklist() => [
         ChecklistItem(name: 'Lights'),

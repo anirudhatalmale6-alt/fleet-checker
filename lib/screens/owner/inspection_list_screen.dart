@@ -13,13 +13,19 @@ class InspectionListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final data = context.watch<DataService>();
-    final inspections = data.getInspectionsForOwner(auth.currentUser!.id);
+    final data = context.read<DataService>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Inspection Reports')),
-      body: inspections.isEmpty
-          ? Center(
+      body: StreamBuilder<List<Inspection>>(
+        stream: data.watchInspectionsForOwner(auth.currentUser!.id),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final inspections = snapshot.data ?? [];
+          if (inspections.isEmpty) {
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -32,84 +38,85 @@ class InspectionListScreen extends StatelessWidget {
                           fontSize: 18, color: AppTheme.textSecondary)),
                 ],
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: inspections.length,
-              itemBuilder: (context, index) {
-                final insp = inspections[index];
-                final isPassed =
-                    insp.status == InspectionStatus.passed;
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: InkWell(
-                    onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                InspectionDetailScreen(inspection: insp))),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: (isPassed
-                                      ? AppTheme.success
-                                      : AppTheme.danger)
-                                  .withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              isPassed ? Icons.check_circle : Icons.warning,
-                              color: isPassed
-                                  ? AppTheme.success
-                                  : AppTheme.danger,
-                            ),
+            );
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: inspections.length,
+            itemBuilder: (context, index) {
+              final insp = inspections[index];
+              final isPassed = insp.status == InspectionStatus.passed;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: InkWell(
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              InspectionDetailScreen(inspection: insp))),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: (isPassed
+                                    ? AppTheme.success
+                                    : AppTheme.danger)
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(insp.vanRegistration,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16)),
-                                const SizedBox(height: 2),
-                                Text(
-                                    '${insp.driverName} - ${DateFormat('dd MMM yyyy, HH:mm').format(insp.date)}',
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        color: AppTheme.textSecondary)),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    _MiniChip(
-                                        '${insp.passCount} Pass',
-                                        AppTheme.success),
-                                    const SizedBox(width: 8),
-                                    if (insp.failCount > 0)
-                                      _MiniChip(
-                                          '${insp.failCount} Fail',
-                                          AppTheme.danger),
-                                  ],
-                                ),
-                              ],
-                            ),
+                          child: Icon(
+                            isPassed ? Icons.check_circle : Icons.warning,
+                            color: isPassed
+                                ? AppTheme.success
+                                : AppTheme.danger,
                           ),
-                          const Icon(Icons.chevron_right,
-                              color: AppTheme.textSecondary),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(insp.vanRegistration,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16)),
+                              const SizedBox(height: 2),
+                              Text(
+                                  '${insp.driverName} - ${DateFormat('dd MMM yyyy, HH:mm').format(insp.date)}',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.textSecondary)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  _MiniChip(
+                                      '${insp.passCount} Pass',
+                                      AppTheme.success),
+                                  const SizedBox(width: 8),
+                                  if (insp.failCount > 0)
+                                    _MiniChip('${insp.failCount} Fail',
+                                        AppTheme.danger),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right,
+                            color: AppTheme.textSecondary),
+                      ],
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
@@ -128,8 +135,8 @@ class _MiniChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(label,
-          style:
-              TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          style: TextStyle(
+              color: color, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }

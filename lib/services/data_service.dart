@@ -1,109 +1,144 @@
-import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/van_model.dart';
 import '../models/inspection_model.dart';
 
 class DataService extends ChangeNotifier {
-  final List<Van> _vans = [];
-  final List<Inspection> _inspections = [];
+  final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
 
-  // --- Vans ---
+  DataService({FirebaseFirestore? firestore, FirebaseStorage? storage})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance;
 
-  List<Van> getVansForOwner(String ownerId) =>
-      _vans.where((v) => v.ownerId == ownerId).toList();
+  // ─── Vans ───
 
-  List<Van> getVansForDriver(String driverId) =>
-      _vans.where((v) => v.assignedDriverId == driverId).toList();
-
-  Van? getVanById(String id) {
-    try {
-      return _vans.firstWhere((v) => v.id == id);
-    } catch (_) {
-      return null;
-    }
+  Stream<List<Van>> watchVansForOwner(String ownerId) {
+    return _firestore
+        .collection('vans')
+        .where('ownerId', isEqualTo: ownerId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => Van.fromMap(d.data(), d.id)).toList());
   }
 
-  void addVan({
+  Stream<List<Van>> watchVansForDriver(String driverId) {
+    return _firestore
+        .collection('vans')
+        .where('assignedDriverId', isEqualTo: driverId)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => Van.fromMap(d.data(), d.id)).toList());
+  }
+
+  Future<Van?> getVanById(String id) async {
+    final doc = await _firestore.collection('vans').doc(id).get();
+    if (doc.exists) {
+      return Van.fromMap(doc.data()!, doc.id);
+    }
+    return null;
+  }
+
+  Future<void> addVan({
     required String registration,
     required String make,
     required String model,
     required int mileage,
     required String ownerId,
-  }) {
-    _vans.add(Van(
-      id: const Uuid().v4(),
-      registration: registration.toUpperCase(),
-      make: make,
-      model: model,
-      mileage: mileage,
-      ownerId: ownerId,
-    ));
-    notifyListeners();
+    String vehicleType = 'Van',
+  }) async {
+    await _firestore.collection('vans').add({
+      'registration': registration.toUpperCase(),
+      'make': make,
+      'model': model,
+      'mileage': mileage,
+      'ownerId': ownerId,
+      'vehicleType': vehicleType,
+      'assignedDriverId': null,
+      'assignedDriverName': null,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
-  void updateVan(Van van) {
-    final idx = _vans.indexWhere((v) => v.id == van.id);
-    if (idx != -1) {
-      _vans[idx] = van;
-      notifyListeners();
+  Future<void> updateVan(String vanId, Map<String, dynamic> data) async {
+    await _firestore.collection('vans').doc(vanId).update(data);
+  }
+
+  Future<void> deleteVan(String id) async {
+    await _firestore.collection('vans').doc(id).delete();
+  }
+
+  Future<void> assignDriver(
+      String vanId, String? driverId, String? driverName) async {
+    await _firestore.collection('vans').doc(vanId).update({
+      'assignedDriverId': driverId,
+      'assignedDriverName': driverName,
+    });
+  }
+
+  // ─── Inspections ───
+
+  Stream<List<Inspection>> watchInspectionsForOwner(String ownerId) {
+    return _firestore
+        .collection('inspections')
+        .where('ownerId', isEqualTo: ownerId)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((d) => Inspection.fromMap(d.data(), d.id)).toList());
+  }
+
+  Stream<List<Inspection>> watchInspectionsForDriver(String driverId) {
+    return _firestore
+        .collection('inspections')
+        .where('driverId', isEqualTo: driverId)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((d) => Inspection.fromMap(d.data(), d.id)).toList());
+  }
+
+  Future<void> addInspection({
+    required String vanId,
+    required String vanRegistration,
+    required String driverId,
+    required String driverName,
+    required String ownerId,
+    required int mileage,
+    required List<ChecklistItem> checklist,
+    required InspectionStatus status,
+    String? generalNotes,
+    List<String> localPhotoPaths = const [],
+  }) async {
+    // Upload photos if any
+    final photoUrls = <String>[];
+    for (final path in localPhotoPaths) {
+      if (!kIsWeb) {
+        final file = File(path);
+        final ref = _storage.ref('inspections/$vanId/${DateTime.now().millisecondsSinceEpoch}_${photoUrls.length}.jpg');
+        await ref.putFile(file);
+        photoUrls.add(await ref.getDownloadURL());
+      }
     }
-  }
 
-  void deleteVan(String id) {
-    _vans.removeWhere((v) => v.id == id);
-    notifyListeners();
-  }
+    await _firestore.collection('inspections').add({
+      'vanId': vanId,
+      'vanRegistration': vanRegistration,
+      'driverId': driverId,
+      'driverName': driverName,
+      'ownerId': ownerId,
+      'date': Timestamp.now(),
+      'mileage': mileage,
+      'checklist': checklist.map((c) => c.toMap()).toList(),
+      'generalNotes': generalNotes,
+      'photoUrls': photoUrls,
+      'status': status.name,
+    });
 
-  void assignDriver(String vanId, String? driverId, String? driverName) {
-    final van = getVanById(vanId);
-    if (van != null) {
-      van.assignedDriverId = driverId;
-      van.assignedDriverName = driverName;
-      notifyListeners();
-    }
-  }
-
-  // --- Inspections ---
-
-  List<Inspection> getInspectionsForOwner(String ownerId) {
-    final ownerVanIds = getVansForOwner(ownerId).map((v) => v.id).toSet();
-    return _inspections.where((i) => ownerVanIds.contains(i.vanId)).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
-  List<Inspection> getInspectionsForDriver(String driverId) {
-    return _inspections.where((i) => i.driverId == driverId).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
-  List<Inspection> getInspectionsForVan(String vanId) {
-    return _inspections.where((i) => i.vanId == vanId).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
-  List<Inspection> getTodayInspections(String ownerId) {
-    final today = DateTime.now();
-    return getInspectionsForOwner(ownerId)
-        .where((i) =>
-            i.date.year == today.year &&
-            i.date.month == today.month &&
-            i.date.day == today.day)
-        .toList();
-  }
-
-  List<Inspection> getFailedInspections(String ownerId) {
-    return getInspectionsForOwner(ownerId)
-        .where((i) => i.status == InspectionStatus.failed)
-        .toList();
-  }
-
-  void addInspection(Inspection inspection) {
-    _inspections.add(inspection);
     // Update van mileage
-    final van = getVanById(inspection.vanId);
-    if (van != null) {
-      van.mileage = inspection.mileage;
-    }
-    notifyListeners();
+    await _firestore.collection('vans').doc(vanId).update({
+      'mileage': mileage,
+    });
   }
 }
