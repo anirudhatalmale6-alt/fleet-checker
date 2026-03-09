@@ -125,6 +125,57 @@ class InspectionDetailScreen extends StatelessWidget {
               ),
             ],
 
+            // Photos section
+            if (inspection.photoUrls.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text('Photos (${inspection.photoUrls.length})',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary)),
+              const SizedBox(height: 12),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: inspection.photoUrls.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () => _showFullPhoto(context, inspection.photoUrls, index),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        inspection.photoUrls[index],
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            color: AppTheme.cardBg,
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stack) {
+                          return Container(
+                            color: AppTheme.cardBg,
+                            child: const Center(
+                              child: Icon(Icons.broken_image,
+                                  color: AppTheme.textSecondary),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+
             const SizedBox(height: 24),
 
             // Summary
@@ -151,6 +202,15 @@ class InspectionDetailScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showFullPhoto(BuildContext context, List<String> urls, int initialIndex) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _PhotoViewer(urls: urls, initialIndex: initialIndex),
       ),
     );
   }
@@ -241,5 +301,65 @@ class _SummaryItem extends StatelessWidget {
                 color: AppTheme.textSecondary, fontSize: 13)),
       ],
     );
+  }
+}
+
+class _PhotoViewer extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+  const _PhotoViewer({required this.urls, required this.initialIndex});
+
+  @override
+  State<_PhotoViewer> createState() => _PhotoViewerState();
+}
+
+class _PhotoViewerState extends State<_PhotoViewer> {
+  late PageController _controller;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _controller = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text('Photo ${_currentIndex + 1} of ${widget.urls.length}'),
+      ),
+      body: PageView.builder(
+        controller: _controller,
+        itemCount: widget.urls.length,
+        onPageChanged: (i) => setState(() => _currentIndex = i),
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            child: Center(
+              child: Image.network(
+                widget.urls[index],
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }

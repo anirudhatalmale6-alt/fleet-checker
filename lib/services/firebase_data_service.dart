@@ -1,5 +1,4 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/van_model.dart';
@@ -120,17 +119,14 @@ class FirebaseDataService extends DataService {
     required List<ChecklistItem> checklist,
     required InspectionStatus status,
     String? generalNotes,
-    List<String> localPhotoPaths = const [],
+    List<Uint8List> photoBytes = const [],
   }) async {
     final photoUrls = <String>[];
-    for (final path in localPhotoPaths) {
-      if (!kIsWeb) {
-        final file = File(path);
-        final ref = _storage.ref(
-            'inspections/$vanId/${DateTime.now().millisecondsSinceEpoch}_${photoUrls.length}.jpg');
-        await ref.putFile(file);
-        photoUrls.add(await ref.getDownloadURL());
-      }
+    for (final bytes in photoBytes) {
+      final ref = _storage.ref(
+          'inspections/$vanId/${DateTime.now().millisecondsSinceEpoch}_${photoUrls.length}.jpg');
+      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+      photoUrls.add(await ref.getDownloadURL());
     }
 
     await _firestore.collection('inspections').add({

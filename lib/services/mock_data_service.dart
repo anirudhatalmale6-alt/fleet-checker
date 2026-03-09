@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 import '../models/van_model.dart';
 import '../models/inspection_model.dart';
@@ -222,7 +223,7 @@ class MockDataService extends DataService {
     required List<ChecklistItem> checklist,
     required InspectionStatus status,
     String? generalNotes,
-    List<String> localPhotoPaths = const [],
+    List<Uint8List> photoBytes = const [],
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
 

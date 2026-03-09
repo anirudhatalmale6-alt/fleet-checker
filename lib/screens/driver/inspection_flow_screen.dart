@@ -1,4 +1,6 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../models/van_model.dart';
 import '../../models/inspection_model.dart';
@@ -15,10 +17,15 @@ class InspectionFlowScreen extends StatefulWidget {
 }
 
 class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
-  int _step = 0; // 0=mileage, 1=checklist, 2=notes, 3=review
+  int _step = 0; // 0=mileage, 1=checklist, 2=notes, 3=photos, 4=review
   final _mileageCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   late List<ChecklistItem> _checklist;
+
+  // Photo state
+  final ImagePicker _picker = ImagePicker();
+  final List<XFile> _photos = [];
+  final List<Uint8List> _photoThumbnails = [];
 
   @override
   void initState() {
@@ -42,6 +49,51 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
     if (_step > 0) setState(() => _step--);
   }
 
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      if (source == ImageSource.gallery) {
+        final images = await _picker.pickMultiImage(
+          maxWidth: 1200,
+          maxHeight: 1200,
+          imageQuality: 80,
+        );
+        for (final img in images) {
+          final bytes = await img.readAsBytes();
+          setState(() {
+            _photos.add(img);
+            _photoThumbnails.add(bytes);
+          });
+        }
+      } else {
+        final img = await _picker.pickImage(
+          source: source,
+          maxWidth: 1200,
+          maxHeight: 1200,
+          imageQuality: 80,
+        );
+        if (img != null) {
+          final bytes = await img.readAsBytes();
+          setState(() {
+            _photos.add(img);
+            _photoThumbnails.add(bytes);
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error picking image: $e')));
+      }
+    }
+  }
+
+  void _removePhoto(int index) {
+    setState(() {
+      _photos.removeAt(index);
+      _photoThumbnails.removeAt(index);
+    });
+  }
+
   bool _submitting = false;
 
   Future<void> _submit() async {
@@ -63,6 +115,7 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
       checklist: _checklist,
       status: hasFails ? InspectionStatus.failed : InspectionStatus.passed,
       generalNotes: _notesCtrl.text.isNotEmpty ? _notesCtrl.text : null,
+      photoBytes: _photoThumbnails,
     );
 
     if (!mounted) return;
@@ -139,11 +192,11 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: _submitting ? null : (_step < 3 ? _next : _submit),
+                      onPressed: _submitting ? null : (_step < 4 ? _next : _submit),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         backgroundColor:
-                            _step == 3 ? AppTheme.success : AppTheme.accent,
+                            _step == 4 ? AppTheme.success : AppTheme.accent,
                       ),
                       child: _submitting
                           ? const SizedBox(
@@ -151,7 +204,7 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
                               height: 24,
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white))
-                          : Text(_step < 3 ? 'Next' : 'Submit Inspection'),
+                          : Text(_step < 4 ? 'Next' : 'Submit Inspection'),
                     ),
                   ),
                 ],
@@ -172,6 +225,8 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
       case 2:
         return _buildNotesStep();
       case 3:
+        return _buildPhotosStep();
+      case 4:
         return _buildReviewStep();
       default:
         return const SizedBox();
@@ -344,12 +399,140 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
     );
   }
 
+  Widget _buildPhotosStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Step 4: Photos',
+            style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary)),
+        const SizedBox(height: 8),
+        const Text('Add photos of the vehicle or any issues found',
+            style: TextStyle(color: AppTheme.textSecondary)),
+        const SizedBox(height: 20),
+
+        // Add photo buttons
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _pickPhoto(ImageSource.camera),
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Camera'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: AppTheme.accent),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _pickPhoto(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Gallery'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: AppTheme.accent),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Photo count
+        if (_photos.isNotEmpty) ...[
+          Text('${_photos.length} photo${_photos.length == 1 ? '' : 's'} added',
+              style: const TextStyle(
+                  color: AppTheme.accent,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15)),
+          const SizedBox(height: 12),
+        ],
+
+        // Photo grid
+        if (_photos.isNotEmpty)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: _photos.length,
+            itemBuilder: (context, index) {
+              return Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: Image.memory(
+                        _photoThumbnails[index],
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => _removePhoto(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close,
+                            color: Colors.white, size: 16),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+
+        if (_photos.isEmpty) ...[
+          const SizedBox(height: 40),
+          Center(
+            child: Column(
+              children: [
+                Icon(Icons.add_a_photo,
+                    size: 64,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.4)),
+                const SizedBox(height: 12),
+                const Text('No photos added yet',
+                    style: TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 16)),
+                const SizedBox(height: 4),
+                const Text('Photos are optional but recommended',
+                    style: TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildReviewStep() {
     final hasFails = _checklist.any((c) => c.status == CheckStatus.fail);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Step 4: Review & Submit',
+        const Text('Step 5: Review & Submit',
             style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -360,6 +543,7 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
         _reviewRow('Mileage', '${_mileageCtrl.text} miles'),
         _reviewRow(
             'Date', DateTime.now().toString().substring(0, 16)),
+        _reviewRow('Photos', '${_photos.length} photo${_photos.length == 1 ? '' : 's'}'),
         const Divider(color: AppTheme.textSecondary, height: 32),
         const Text('Checklist Results',
             style: TextStyle(
@@ -410,6 +594,38 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
             ),
           ),
         ],
+
+        // Photo thumbnails in review
+        if (_photos.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          const Text('Photos',
+              style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary)),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 80,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _photos.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.memory(
+                      _photoThumbnails[index],
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+
         const SizedBox(height: 20),
         Container(
           width: double.infinity,
@@ -507,7 +723,7 @@ class _StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final steps = ['Mileage', 'Checklist', 'Notes', 'Review'];
+    final steps = ['Mileage', 'Checklist', 'Notes', 'Photos', 'Review'];
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       color: AppTheme.primary,
@@ -529,8 +745,8 @@ class _StepIndicator extends StatelessWidget {
           return Column(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   color: isActive ? AppTheme.accent : AppTheme.surface,
                   shape: BoxShape.circle,
@@ -540,20 +756,20 @@ class _StepIndicator extends StatelessWidget {
                 ),
                 child: Center(
                   child: stepIdx < currentStep
-                      ? const Icon(Icons.check, color: Colors.white, size: 18)
+                      ? const Icon(Icons.check, color: Colors.white, size: 16)
                       : Text('${stepIdx + 1}',
                           style: TextStyle(
                               color: isActive
                                   ? Colors.white
                                   : AppTheme.textSecondary,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14)),
+                              fontSize: 12)),
                 ),
               ),
               const SizedBox(height: 4),
               Text(steps[stepIdx],
                   style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       color: isActive ? AppTheme.accent : AppTheme.textSecondary)),
             ],
           );

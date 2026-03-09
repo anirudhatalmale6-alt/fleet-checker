@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import '../models/van_model.dart';
 import '../models/inspection_model.dart';
@@ -37,6 +38,6 @@ abstract class DataService extends ChangeNotifier {
     required List<ChecklistItem> checklist,
     required InspectionStatus status,
     String? generalNotes,
-    List<String> localPhotoPaths = const [],
+    List<Uint8List> photoBytes = const [],
   });
 }
