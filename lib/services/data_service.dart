@@ -39,5 +39,6 @@ abstract class DataService extends ChangeNotifier {
     required InspectionStatus status,
     String? generalNotes,
     List<Uint8List> photoBytes = const [],
+    Map<String, List<Uint8List>> itemPhotoBytes = const {},
   });
 }

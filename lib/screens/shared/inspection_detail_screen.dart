@@ -74,40 +74,82 @@ class InspectionDetailScreen extends StatelessWidget {
               children: inspection.checklist
                   .map((item) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _statusIcon(item.status),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(item.name,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w500)),
-                                  if (item.notes != null &&
-                                      item.notes!.isNotEmpty) ...[
-                                    const SizedBox(height: 2),
-                                    Text(item.notes!,
-                                        style: const TextStyle(
-                                            fontSize: 13,
-                                            color: AppTheme.danger)),
-                                  ],
-                                ],
-                              ),
+                            Row(
+                              children: [
+                                _statusIcon(item.status),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(item.name,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w500)),
+                                      if (item.notes != null &&
+                                          item.notes!.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(item.notes!,
+                                            style: const TextStyle(
+                                                fontSize: 13,
+                                                color: AppTheme.danger)),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  item.status.name.toUpperCase(),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: item.status == CheckStatus.pass
+                                        ? AppTheme.success
+                                        : item.status == CheckStatus.fail
+                                            ? AppTheme.danger
+                                            : AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              item.status.name.toUpperCase(),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: item.status == CheckStatus.pass
-                                    ? AppTheme.success
-                                    : item.status == CheckStatus.fail
-                                        ? AppTheme.danger
-                                        : AppTheme.textSecondary,
+                            // Per-item photos
+                            if (item.photoUrls.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                height: 60,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: item.photoUrls.length,
+                                  itemBuilder: (context, index) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(left: 36, right: 6),
+                                      child: GestureDetector(
+                                        onTap: () => _showFullPhoto(
+                                            context, item.photoUrls, index),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Image.network(
+                                            item.photoUrls[index],
+                                            width: 60,
+                                            height: 60,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Container(
+                                              width: 60,
+                                              height: 60,
+                                              color: AppTheme.cardBg,
+                                              child: const Icon(Icons.broken_image,
+                                                  size: 20,
+                                                  color: AppTheme.textSecondary),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ))

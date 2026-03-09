@@ -22,10 +22,13 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
   final _notesCtrl = TextEditingController();
   late List<ChecklistItem> _checklist;
 
-  // Photo state
+  // Photo state (general)
   final ImagePicker _picker = ImagePicker();
   final List<XFile> _photos = [];
   final List<Uint8List> _photoThumbnails = [];
+
+  // Per-item photo state (for failed items)
+  final Map<String, List<Uint8List>> _itemPhotos = {};
 
   @override
   void initState() {
@@ -94,6 +97,53 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
     });
   }
 
+  Future<void> _pickItemPhoto(String itemName, ImageSource source) async {
+    try {
+      if (source == ImageSource.gallery) {
+        final images = await _picker.pickMultiImage(
+          maxWidth: 1200,
+          maxHeight: 1200,
+          imageQuality: 80,
+        );
+        for (final img in images) {
+          final bytes = await img.readAsBytes();
+          setState(() {
+            _itemPhotos.putIfAbsent(itemName, () => []);
+            _itemPhotos[itemName]!.add(bytes);
+          });
+        }
+      } else {
+        final img = await _picker.pickImage(
+          source: source,
+          maxWidth: 1200,
+          maxHeight: 1200,
+          imageQuality: 80,
+        );
+        if (img != null) {
+          final bytes = await img.readAsBytes();
+          setState(() {
+            _itemPhotos.putIfAbsent(itemName, () => []);
+            _itemPhotos[itemName]!.add(bytes);
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error picking image: $e')));
+      }
+    }
+  }
+
+  void _removeItemPhoto(String itemName, int index) {
+    setState(() {
+      _itemPhotos[itemName]?.removeAt(index);
+      if (_itemPhotos[itemName]?.isEmpty ?? false) {
+        _itemPhotos.remove(itemName);
+      }
+    });
+  }
+
   bool _submitting = false;
 
   Future<void> _submit() async {
@@ -116,6 +166,7 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
       status: hasFails ? InspectionStatus.failed : InspectionStatus.passed,
       generalNotes: _notesCtrl.text.isNotEmpty ? _notesCtrl.text : null,
       photoBytes: _photoThumbnails,
+      itemPhotoBytes: _itemPhotos,
     );
 
     if (!mounted) return;
@@ -342,46 +393,128 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
         const Text('Add any additional notes or report issues',
             style: TextStyle(color: AppTheme.textSecondary)),
         const SizedBox(height: 20),
-        // Show failed items
-        ..._checklist.where((c) => c.status == CheckStatus.fail).map((item) =>
-            Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.danger.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border:
-                    Border.all(color: AppTheme.danger.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.warning,
-                          color: AppTheme.danger, size: 18),
-                      const SizedBox(width: 8),
-                      Text('${item.name} - FAILED',
-                          style: const TextStyle(
-                              color: AppTheme.danger,
-                              fontWeight: FontWeight.w600)),
-                    ],
+        // Show failed items with photo upload
+        ..._checklist.where((c) => c.status == CheckStatus.fail).map((item) {
+          final itemPhotos = _itemPhotos[item.name] ?? [];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.danger.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border:
+                  Border.all(color: AppTheme.danger.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.warning,
+                        color: AppTheme.danger, size: 18),
+                    const SizedBox(width: 8),
+                    Text('${item.name} - FAILED',
+                        style: const TextStyle(
+                            color: AppTheme.danger,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  onChanged: (v) => item.notes = v,
+                  decoration: InputDecoration(
+                    hintText: 'Describe the issue...',
+                    filled: true,
+                    fillColor: AppTheme.surface,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    onChanged: (v) => item.notes = v,
-                    decoration: InputDecoration(
-                      hintText: 'Describe the issue...',
-                      filled: true,
-                      fillColor: AppTheme.surface,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 10),
+                // Photo upload buttons for this failed item
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _pickItemPhoto(item.name, ImageSource.camera),
+                        icon: const Icon(Icons.camera_alt, size: 16),
+                        label: const Text('Camera', style: TextStyle(fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          side: BorderSide(color: AppTheme.danger.withValues(alpha: 0.5)),
+                          foregroundColor: AppTheme.danger,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
                     ),
-                    maxLines: 2,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _pickItemPhoto(item.name, ImageSource.gallery),
+                        icon: const Icon(Icons.photo_library, size: 16),
+                        label: const Text('Gallery', style: TextStyle(fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          side: BorderSide(color: AppTheme.danger.withValues(alpha: 0.5)),
+                          foregroundColor: AppTheme.danger,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                // Show item photos
+                if (itemPhotos.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 70,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: itemPhotos.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.memory(
+                                  itemPhotos[index],
+                                  width: 70,
+                                  height: 70,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Positioned(
+                                top: 2,
+                                right: 2,
+                                child: GestureDetector(
+                                  onTap: () => _removeItemPhoto(item.name, index),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close,
+                                        color: Colors.white, size: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
-              ),
-            )),
+              ],
+            ),
+          );
+        }),
         const SizedBox(height: 16),
         TextField(
           controller: _notesCtrl,
@@ -551,27 +684,41 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary)),
         const SizedBox(height: 12),
-        ..._checklist.map((item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  _checkIcon(item.status),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(item.name)),
-                  Text(
-                    item.status.name.toUpperCase(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: item.status == CheckStatus.pass
-                          ? AppTheme.success
-                          : item.status == CheckStatus.fail
-                              ? AppTheme.danger
-                              : AppTheme.textSecondary,
-                    ),
+        ..._checklist.map((item) {
+          final itemPhotos = _itemPhotos[item.name] ?? [];
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                _checkIcon(item.status),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.name),
+                      if (item.status == CheckStatus.fail && itemPhotos.isNotEmpty)
+                        Text('${itemPhotos.length} photo${itemPhotos.length == 1 ? '' : 's'} attached',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppTheme.accent)),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                ),
+                Text(
+                  item.status.name.toUpperCase(),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: item.status == CheckStatus.pass
+                        ? AppTheme.success
+                        : item.status == CheckStatus.fail
+                            ? AppTheme.danger
+                            : AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
         if (_notesCtrl.text.isNotEmpty) ...[
           const SizedBox(height: 16),
           Container(

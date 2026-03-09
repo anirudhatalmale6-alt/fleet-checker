@@ -6,17 +6,20 @@ class ChecklistItem {
   final String name;
   CheckStatus status;
   String? notes;
+  List<String> photoUrls;
 
   ChecklistItem({
     required this.name,
     this.status = CheckStatus.pass,
     this.notes,
+    this.photoUrls = const [],
   });
 
   Map<String, dynamic> toMap() => {
         'name': name,
         'status': status.name,
         'notes': notes,
+        'photoUrls': photoUrls,
       };
 
   factory ChecklistItem.fromMap(Map<String, dynamic> map) {
@@ -24,6 +27,7 @@ class ChecklistItem {
       name: map['name'] ?? '',
       status: CheckStatus.values.byName(map['status'] ?? 'pass'),
       notes: map['notes'],
+      photoUrls: List<String>.from(map['photoUrls'] ?? []),
     );
   }
 }

@@ -120,13 +120,30 @@ class FirebaseDataService extends DataService {
     required InspectionStatus status,
     String? generalNotes,
     List<Uint8List> photoBytes = const [],
+    Map<String, List<Uint8List>> itemPhotoBytes = const {},
   }) async {
+    // Upload general photos
     final photoUrls = <String>[];
     for (final bytes in photoBytes) {
       final ref = _storage.ref(
           'inspections/$vanId/${DateTime.now().millisecondsSinceEpoch}_${photoUrls.length}.jpg');
       await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
       photoUrls.add(await ref.getDownloadURL());
+    }
+
+    // Upload per-item photos for failed items
+    for (final item in checklist) {
+      final itemBytes = itemPhotoBytes[item.name];
+      if (itemBytes != null && itemBytes.isNotEmpty) {
+        final urls = <String>[];
+        for (final bytes in itemBytes) {
+          final ref = _storage.ref(
+              'inspections/$vanId/items/${item.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}_${urls.length}.jpg');
+          await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+          urls.add(await ref.getDownloadURL());
+        }
+        item.photoUrls = urls;
+      }
     }
 
     await _firestore.collection('inspections').add({
