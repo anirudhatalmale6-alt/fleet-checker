@@ -5,16 +5,30 @@ import 'firebase_options.dart';
 import 'models/user_model.dart';
 import 'services/auth_service.dart';
 import 'services/data_service.dart';
+import 'services/firebase_auth_service.dart';
+import 'services/firebase_data_service.dart';
+import 'services/mock_auth_service.dart';
+import 'services/mock_data_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/owner/owner_dashboard.dart';
 import 'screens/driver/driver_dashboard.dart';
 
+bool _useFirebase = false;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    _useFirebase = true;
+  } catch (_) {
+    // Firebase not configured — use demo mode with mock services
+    _useFirebase = false;
+  }
+
   runApp(const FleetCheckerApp());
 }
 
@@ -25,8 +39,16 @@ class FleetCheckerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
-        Provider(create: (_) => DataService()),
+        ChangeNotifierProvider<AuthService>(
+          create: (_) => _useFirebase
+              ? FirebaseAuthService()
+              : MockAuthService(),
+        ),
+        Provider<DataService>(
+          create: (_) => _useFirebase
+              ? FirebaseDataService()
+              : MockDataService(),
+        ),
       ],
       child: MaterialApp(
         title: 'Fleet Checker',

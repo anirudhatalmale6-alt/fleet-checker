@@ -77,7 +77,7 @@ class _AddVanScreenState extends State<AddVanScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
-                initialValue: _vehicleType,
+                value: _vehicleType,
                 decoration: const InputDecoration(
                   labelText: 'Vehicle Type',
                   prefixIcon: Icon(Icons.category),

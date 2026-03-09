@@ -127,6 +127,34 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: const Text("Don't have an account? Register"),
                   ),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppTheme.accent.withValues(alpha: 0.2)),
+                    ),
+                    child: const Column(
+                      children: [
+                        Text('Demo Credentials',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.accent)),
+                        SizedBox(height: 8),
+                        Text(
+                          'Owner: owner@demo.com / demo123\n'
+                          'Driver: driver@demo.com / demo123',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textSecondary,
+                              height: 1.5),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
