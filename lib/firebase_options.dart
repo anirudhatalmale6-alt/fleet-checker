@@ -2,8 +2,6 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Firebase configuration for Fleet Checker.
-/// Replace these values with your own Firebase project config.
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -21,30 +19,30 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // TODO: Replace with actual Firebase project values
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'FIREBASE_API_KEY',
-    appId: '1:000000000000:web:0000000000000000000000',
-    messagingSenderId: '000000000000',
-    projectId: 'fleet-checker-demo',
-    authDomain: 'fleet-checker-demo.firebaseapp.com',
-    storageBucket: 'fleet-checker-demo.firebasestorage.app',
+    apiKey: 'AIzaSyBSaxiEZiyCZcgDTYo2KuD_G9T5DIkHyiQ',
+    appId: '1:747477788438:web:f49d8e8c854cfd774a1237',
+    messagingSenderId: '747477788438',
+    projectId: 'vehicle-checker-7956a',
+    authDomain: 'vehicle-checker-7956a.firebaseapp.com',
+    storageBucket: 'vehicle-checker-7956a.firebasestorage.app',
+    measurementId: 'G-0WDYKL9GKP',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'FIREBASE_API_KEY',
-    appId: '1:000000000000:android:0000000000000000000000',
-    messagingSenderId: '000000000000',
-    projectId: 'fleet-checker-demo',
-    storageBucket: 'fleet-checker-demo.firebasestorage.app',
+    apiKey: 'AIzaSyBSaxiEZiyCZcgDTYo2KuD_G9T5DIkHyiQ',
+    appId: '1:747477788438:web:f49d8e8c854cfd774a1237',
+    messagingSenderId: '747477788438',
+    projectId: 'vehicle-checker-7956a',
+    storageBucket: 'vehicle-checker-7956a.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'FIREBASE_API_KEY',
-    appId: '1:000000000000:ios:0000000000000000000000',
-    messagingSenderId: '000000000000',
-    projectId: 'fleet-checker-demo',
-    storageBucket: 'fleet-checker-demo.firebasestorage.app',
+    apiKey: 'AIzaSyBSaxiEZiyCZcgDTYo2KuD_G9T5DIkHyiQ',
+    appId: '1:747477788438:web:f49d8e8c854cfd774a1237',
+    messagingSenderId: '747477788438',
+    projectId: 'vehicle-checker-7956a',
+    storageBucket: 'vehicle-checker-7956a.firebasestorage.app',
     iosBundleId: 'com.fleetchecker.fleetChecker',
   );
 }
