@@ -46,6 +46,7 @@ class Inspection {
   final List<ChecklistItem> checklist;
   final String? generalNotes;
   final List<String> photoUrls;
+  final String? signatureUrl;
   final InspectionStatus status;
 
   Inspection({
@@ -60,6 +61,7 @@ class Inspection {
     required this.checklist,
     this.generalNotes,
     this.photoUrls = const [],
+    this.signatureUrl,
     required this.status,
   });
 
@@ -79,6 +81,7 @@ class Inspection {
         'checklist': checklist.map((c) => c.toMap()).toList(),
         'generalNotes': generalNotes,
         'photoUrls': photoUrls,
+        'signatureUrl': signatureUrl,
         'status': status.name,
       };
 
@@ -100,6 +103,7 @@ class Inspection {
           [],
       generalNotes: map['generalNotes'],
       photoUrls: List<String>.from(map['photoUrls'] ?? []),
+      signatureUrl: map['signatureUrl'],
       status: InspectionStatus.values.byName(map['status'] ?? 'passed'),
     );
   }

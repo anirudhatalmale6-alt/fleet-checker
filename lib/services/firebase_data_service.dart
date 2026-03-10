@@ -122,6 +122,7 @@ class FirebaseDataService extends DataService {
     String? generalNotes,
     List<Uint8List> photoBytes = const [],
     Map<String, List<Uint8List>> itemPhotoBytes = const {},
+    Uint8List? signatureBytes,
   }) async {
     // Upload general photos
     final photoUrls = <String>[];
@@ -147,6 +148,16 @@ class FirebaseDataService extends DataService {
       }
     }
 
+    // Upload signature if provided
+    String? signatureUrl;
+    if (signatureBytes != null) {
+      final sigRef = _storage.ref(
+          'inspections/$vanId/signature_${DateTime.now().millisecondsSinceEpoch}.png');
+      await sigRef.putData(
+          signatureBytes, SettableMetadata(contentType: 'image/png'));
+      signatureUrl = await sigRef.getDownloadURL();
+    }
+
     await _firestore.collection('inspections').add({
       'vanId': vanId,
       'vanRegistration': vanRegistration,
@@ -158,6 +169,7 @@ class FirebaseDataService extends DataService {
       'checklist': checklist.map((c) => c.toMap()).toList(),
       'generalNotes': generalNotes,
       'photoUrls': photoUrls,
+      'signatureUrl': signatureUrl,
       'status': status.name,
     });
 

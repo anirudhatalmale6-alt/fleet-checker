@@ -228,6 +228,7 @@ class MockDataService extends DataService {
     String? generalNotes,
     List<Uint8List> photoBytes = const [],
     Map<String, List<Uint8List>> itemPhotoBytes = const {},
+    Uint8List? signatureBytes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
 

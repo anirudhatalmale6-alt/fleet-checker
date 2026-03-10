@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -17,10 +18,15 @@ class InspectionFlowScreen extends StatefulWidget {
 }
 
 class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
-  int _step = 0; // 0=mileage, 1=checklist, 2=notes, 3=photos, 4=review
+  int _step = 0; // 0=mileage, 1=checklist, 2=notes, 3=photos, 4=signature, 5=review
   final _mileageCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   late List<ChecklistItem> _checklist;
+
+  // Signature state
+  final GlobalKey _signatureKey = GlobalKey();
+  List<List<Offset>> _signatureStrokes = [];
+  bool _hasSigned = false;
 
   // Photo state (general)
   final ImagePicker _picker = ImagePicker();
@@ -44,6 +50,11 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
             const SnackBar(content: Text('Enter a valid mileage')));
         return;
       }
+    }
+    if (_step == 4 && !_hasSigned) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign before continuing')));
+      return;
     }
     setState(() => _step++);
   }
@@ -144,6 +155,43 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
     });
   }
 
+  Future<Uint8List?> _getSignatureBytes() async {
+    if (!_hasSigned || _signatureStrokes.isEmpty) return null;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final size = const Size(400, 200);
+
+    // White background
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..color = Colors.white,
+    );
+
+    // Draw strokes
+    final paint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    for (final stroke in _signatureStrokes) {
+      if (stroke.length < 2) continue;
+      final path = Path();
+      path.moveTo(stroke.first.dx, stroke.first.dy);
+      for (int i = 1; i < stroke.length; i++) {
+        path.lineTo(stroke[i].dx, stroke[i].dy);
+      }
+      canvas.drawPath(path, paint);
+    }
+
+    final picture = recorder.endRecording();
+    final image =
+        await picture.toImage(size.width.toInt(), size.height.toInt());
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData?.buffer.asUint8List();
+  }
+
   bool _submitting = false;
 
   Future<void> _submit() async {
@@ -154,6 +202,8 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
     final data = context.read<DataService>();
     final user = auth.currentUser!;
     final hasFails = _checklist.any((c) => c.status == CheckStatus.fail);
+
+    final sigBytes = await _getSignatureBytes();
 
     await data.addInspection(
       vanId: widget.van.id,
@@ -167,6 +217,7 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
       generalNotes: _notesCtrl.text.isNotEmpty ? _notesCtrl.text : null,
       photoBytes: _photoThumbnails,
       itemPhotoBytes: _itemPhotos,
+      signatureBytes: sigBytes,
     );
 
     if (!mounted) return;
@@ -243,11 +294,11 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: _submitting ? null : (_step < 4 ? _next : _submit),
+                      onPressed: _submitting ? null : (_step < 5 ? _next : _submit),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         backgroundColor:
-                            _step == 4 ? AppTheme.success : AppTheme.accent,
+                            _step == 5 ? AppTheme.success : AppTheme.accent,
                       ),
                       child: _submitting
                           ? const SizedBox(
@@ -255,7 +306,7 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
                               height: 24,
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white))
-                          : Text(_step < 4 ? 'Next' : 'Submit Inspection'),
+                          : Text(_step < 5 ? 'Next' : 'Submit Inspection'),
                     ),
                   ),
                 ],
@@ -278,6 +329,8 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
       case 3:
         return _buildPhotosStep();
       case 4:
+        return _buildSignatureStep();
+      case 5:
         return _buildReviewStep();
       default:
         return const SizedBox();
@@ -660,12 +713,98 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
     );
   }
 
+  Widget _buildSignatureStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Step 5: Sign Off',
+            style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary)),
+        const SizedBox(height: 8),
+        const Text('Sign below to confirm this inspection is accurate',
+            style: TextStyle(color: AppTheme.textSecondary)),
+        const SizedBox(height: 20),
+        Container(
+          key: _signatureKey,
+          height: 200,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _hasSigned
+                  ? AppTheme.success.withValues(alpha: 0.5)
+                  : AppTheme.textSecondary.withValues(alpha: 0.3),
+              width: 2,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: GestureDetector(
+              onPanStart: (details) {
+                setState(() {
+                  _signatureStrokes.add([details.localPosition]);
+                  _hasSigned = true;
+                });
+              },
+              onPanUpdate: (details) {
+                setState(() {
+                  if (_signatureStrokes.isNotEmpty) {
+                    _signatureStrokes.last.add(details.localPosition);
+                  }
+                });
+              },
+              child: CustomPaint(
+                size: const Size(double.infinity, 200),
+                painter: _SignaturePainter(strokes: _signatureStrokes),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            if (_hasSigned)
+              Row(
+                children: [
+                  const Icon(Icons.check_circle,
+                      color: AppTheme.success, size: 18),
+                  const SizedBox(width: 6),
+                  const Text('Signed',
+                      style: TextStyle(
+                          color: AppTheme.success,
+                          fontWeight: FontWeight.w600)),
+                ],
+              )
+            else
+              const Text('Draw your signature above',
+                  style: TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 13)),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _signatureStrokes = [];
+                  _hasSigned = false;
+                });
+              },
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Clear'),
+              style: TextButton.styleFrom(foregroundColor: AppTheme.danger),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildReviewStep() {
     final hasFails = _checklist.any((c) => c.status == CheckStatus.fail);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Step 5: Review & Submit',
+        const Text('Step 6: Review & Submit',
             style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -677,6 +816,7 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
         _reviewRow(
             'Date', DateTime.now().toString().substring(0, 16)),
         _reviewRow('Photos', '${_photos.length} photo${_photos.length == 1 ? '' : 's'}'),
+        _reviewRow('Signature', _hasSigned ? 'Signed' : 'Not signed'),
         const Divider(color: AppTheme.textSecondary, height: 32),
         const Text('Checklist Results',
             style: TextStyle(
@@ -864,13 +1004,69 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
   }
 }
 
+class _SignaturePainter extends CustomPainter {
+  final List<List<Offset>> strokes;
+  _SignaturePainter({required this.strokes});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    // Draw signature line
+    final linePaint = Paint()
+      ..color = Colors.grey.withValues(alpha: 0.3)
+      ..strokeWidth = 1.0;
+    final lineY = size.height * 0.75;
+    canvas.drawLine(
+      Offset(20, lineY),
+      Offset(size.width - 20, lineY),
+      linePaint,
+    );
+
+    // Draw "x" mark
+    if (strokes.isEmpty) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: 'x',
+          style: TextStyle(
+            color: Colors.grey.withValues(alpha: 0.4),
+            fontSize: 20,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(20, lineY - textPainter.height - 4));
+    }
+
+    // Draw strokes
+    for (final stroke in strokes) {
+      if (stroke.length < 2) continue;
+      final path = Path();
+      path.moveTo(stroke.first.dx, stroke.first.dy);
+      for (int i = 1; i < stroke.length; i++) {
+        path.lineTo(stroke[i].dx, stroke[i].dy);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SignaturePainter oldDelegate) => true;
+}
+
 class _StepIndicator extends StatelessWidget {
   final int currentStep;
   const _StepIndicator({required this.currentStep});
 
   @override
   Widget build(BuildContext context) {
-    final steps = ['Mileage', 'Checklist', 'Notes', 'Photos', 'Review'];
+    final steps = ['Mileage', 'Checklist', 'Notes', 'Photos', 'Sign', 'Review'];
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       color: AppTheme.primary,

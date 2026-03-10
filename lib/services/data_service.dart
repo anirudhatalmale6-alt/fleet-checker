@@ -40,5 +40,6 @@ abstract class DataService extends ChangeNotifier {
     String? generalNotes,
     List<Uint8List> photoBytes = const [],
     Map<String, List<Uint8List>> itemPhotoBytes = const {},
+    Uint8List? signatureBytes,
   });
 }

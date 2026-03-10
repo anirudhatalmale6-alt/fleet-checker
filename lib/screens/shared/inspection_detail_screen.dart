@@ -218,6 +218,36 @@ class InspectionDetailScreen extends StatelessWidget {
               ),
             ],
 
+            // Signature section
+            if (inspection.signatureUrl != null) ...[
+              const SizedBox(height: 20),
+              const Text('Driver Signature',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary)),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Image.network(
+                  inspection.signatureUrl!,
+                  height: 120,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 80,
+                    alignment: Alignment.center,
+                    child: const Text('Signature unavailable',
+                        style: TextStyle(color: AppTheme.textSecondary)),
+                  ),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 24),
 
             // Summary
