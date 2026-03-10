@@ -133,38 +133,42 @@ class FirebaseDataService extends DataService {
     Map<String, List<Uint8List>> itemPhotoBytes = const {},
     Uint8List? signatureBytes,
   }) async {
-    // Upload general photos
+    // Try uploading photos/signature — skip gracefully if Storage not enabled
     final photoUrls = <String>[];
-    for (final bytes in photoBytes) {
-      final ref = _storage.ref(
-          'inspections/$vanId/${DateTime.now().millisecondsSinceEpoch}_${photoUrls.length}.jpg');
-      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-      photoUrls.add(await ref.getDownloadURL());
-    }
-
-    // Upload per-item photos for failed items
-    for (final item in checklist) {
-      final itemBytes = itemPhotoBytes[item.name];
-      if (itemBytes != null && itemBytes.isNotEmpty) {
-        final urls = <String>[];
-        for (final bytes in itemBytes) {
-          final ref = _storage.ref(
-              'inspections/$vanId/items/${item.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}_${urls.length}.jpg');
-          await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-          urls.add(await ref.getDownloadURL());
-        }
-        item.photoUrls = urls;
-      }
-    }
-
-    // Upload signature if provided
     String? signatureUrl;
-    if (signatureBytes != null) {
-      final sigRef = _storage.ref(
-          'inspections/$vanId/signature_${DateTime.now().millisecondsSinceEpoch}.png');
-      await sigRef.putData(
-          signatureBytes, SettableMetadata(contentType: 'image/png'));
-      signatureUrl = await sigRef.getDownloadURL();
+
+    try {
+      for (final bytes in photoBytes) {
+        final ref = _storage.ref(
+            'inspections/$vanId/${DateTime.now().millisecondsSinceEpoch}_${photoUrls.length}.jpg');
+        await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+        photoUrls.add(await ref.getDownloadURL());
+      }
+
+      for (final item in checklist) {
+        final itemBytes = itemPhotoBytes[item.name];
+        if (itemBytes != null && itemBytes.isNotEmpty) {
+          final urls = <String>[];
+          for (final bytes in itemBytes) {
+            final ref = _storage.ref(
+                'inspections/$vanId/items/${item.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}_${urls.length}.jpg');
+            await ref.putData(
+                bytes, SettableMetadata(contentType: 'image/jpeg'));
+            urls.add(await ref.getDownloadURL());
+          }
+          item.photoUrls = urls;
+        }
+      }
+
+      if (signatureBytes != null) {
+        final sigRef = _storage.ref(
+            'inspections/$vanId/signature_${DateTime.now().millisecondsSinceEpoch}.png');
+        await sigRef.putData(
+            signatureBytes, SettableMetadata(contentType: 'image/png'));
+        signatureUrl = await sigRef.getDownloadURL();
+      }
+    } catch (_) {
+      // Storage not enabled yet — continue without photos/signature
     }
 
     await _firestore.collection('inspections').add({
