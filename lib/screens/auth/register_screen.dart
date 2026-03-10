@@ -47,12 +47,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > 600;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Create Account')),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Form(
+        child: Center(
+          child: SingleChildScrollView(
+          padding: EdgeInsets.all(isWide ? 48 : 32),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Container(
+              padding: isWide ? const EdgeInsets.all(40) : null,
+              decoration: isWide
+                  ? BoxDecoration(
+                      color: AppTheme.cardBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.textSecondary.withValues(alpha: 0.15),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    )
+                  : null,
+              child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -156,6 +179,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ],
             ),
           ),
+            ),
+          ),
+        ),
         ),
       ),
     );

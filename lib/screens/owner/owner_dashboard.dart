@@ -77,7 +77,10 @@ class OwnerDashboard extends StatelessWidget {
 
                   return SingleChildScrollView(
                     padding: const EdgeInsets.all(20),
-                    child: Column(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 800),
+                        child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
@@ -178,6 +181,8 @@ class OwnerDashboard extends StatelessWidget {
                         ),
                       ],
                     ),
+                  ),
+                  ),
                   );
                 },
               );
