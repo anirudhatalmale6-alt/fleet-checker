@@ -18,10 +18,13 @@ class FirebaseDataService extends DataService {
     return _firestore
         .collection('vans')
         .where('ownerId', isEqualTo: ownerId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => Van.fromMap(d.data(), d.id)).toList());
+        .map((snap) {
+      final vans =
+          snap.docs.map((d) => Van.fromMap(d.data(), d.id)).toList();
+      vans.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return vans;
+    });
   }
 
   @override
@@ -90,11 +93,14 @@ class FirebaseDataService extends DataService {
     return _firestore
         .collection('inspections')
         .where('ownerId', isEqualTo: ownerId)
-        .orderBy('date', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => Inspection.fromMap(d.data(), d.id))
-            .toList());
+        .map((snap) {
+      final list = snap.docs
+          .map((d) => Inspection.fromMap(d.data(), d.id))
+          .toList();
+      list.sort((a, b) => b.date.compareTo(a.date));
+      return list;
+    });
   }
 
   @override
@@ -102,11 +108,14 @@ class FirebaseDataService extends DataService {
     return _firestore
         .collection('inspections')
         .where('driverId', isEqualTo: driverId)
-        .orderBy('date', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => Inspection.fromMap(d.data(), d.id))
-            .toList());
+        .map((snap) {
+      final list = snap.docs
+          .map((d) => Inspection.fromMap(d.data(), d.id))
+          .toList();
+      list.sort((a, b) => b.date.compareTo(a.date));
+      return list;
+    });
   }
 
   @override
