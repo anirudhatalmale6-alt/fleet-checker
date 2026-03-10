@@ -59,6 +59,7 @@ class FirebaseDataService extends DataService {
       'mileage': mileage,
       'ownerId': ownerId,
       'vehicleType': vehicleType,
+      'inspectionFrequencyDays': 1,
       'assignedDriverId': null,
       'assignedDriverName': null,
       'createdAt': FieldValue.serverTimestamp(),

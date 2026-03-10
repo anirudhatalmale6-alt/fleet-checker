@@ -10,6 +10,7 @@ class Van {
   String? assignedDriverName;
   final String ownerId;
   String vehicleType;
+  int inspectionFrequencyDays;
   final DateTime createdAt;
 
   Van({
@@ -22,6 +23,7 @@ class Van {
     this.assignedDriverName,
     required this.ownerId,
     this.vehicleType = 'Van',
+    this.inspectionFrequencyDays = 1,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -36,6 +38,7 @@ class Van {
         'assignedDriverName': assignedDriverName,
         'ownerId': ownerId,
         'vehicleType': vehicleType,
+        'inspectionFrequencyDays': inspectionFrequencyDays,
         'createdAt': Timestamp.fromDate(createdAt),
       };
 
@@ -50,6 +53,7 @@ class Van {
       assignedDriverName: map['assignedDriverName'],
       ownerId: map['ownerId'] ?? '',
       vehicleType: map['vehicleType'] ?? 'Van',
+      inspectionFrequencyDays: map['inspectionFrequencyDays'] ?? 1,
       createdAt: map['createdAt'] is Timestamp
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(),

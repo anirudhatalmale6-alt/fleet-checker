@@ -157,6 +157,9 @@ class MockDataService extends DataService {
       if (data.containsKey('vehicleType')) {
         van.vehicleType = data['vehicleType'];
       }
+      if (data.containsKey('inspectionFrequencyDays')) {
+        van.inspectionFrequencyDays = data['inspectionFrequencyDays'];
+      }
       if (data.containsKey('assignedDriverId')) {
         van.assignedDriverId = data['assignedDriverId'];
       }

@@ -19,11 +19,20 @@ class _AddVanScreenState extends State<AddVanScreen> {
   late final TextEditingController _modelCtrl;
   late final TextEditingController _mileageCtrl;
   late String _vehicleType;
+  late int _inspectionFrequencyDays;
   bool _saving = false;
 
   bool get isEditing => widget.van != null;
 
   static const _vehicleTypes = ['Van', 'Truck', 'Car', 'Bus', 'Other'];
+  static const _frequencyOptions = {
+    1: 'Daily',
+    2: 'Every 2 days',
+    3: 'Every 3 days',
+    7: 'Weekly',
+    14: 'Every 2 weeks',
+    30: 'Monthly',
+  };
 
   @override
   void initState() {
@@ -34,6 +43,7 @@ class _AddVanScreenState extends State<AddVanScreen> {
     _mileageCtrl =
         TextEditingController(text: widget.van?.mileage.toString() ?? '');
     _vehicleType = widget.van?.vehicleType ?? 'Van';
+    _inspectionFrequencyDays = widget.van?.inspectionFrequencyDays ?? 1;
   }
 
   Future<void> _save() async {
@@ -50,6 +60,7 @@ class _AddVanScreenState extends State<AddVanScreen> {
         'model': _modelCtrl.text.trim(),
         'mileage': int.parse(_mileageCtrl.text.trim()),
         'vehicleType': _vehicleType,
+        'inspectionFrequencyDays': _inspectionFrequencyDays,
       });
     } else {
       await data.addVan(
@@ -135,6 +146,20 @@ class _AddVanScreenState extends State<AddVanScreen> {
                   if (int.tryParse(v) == null) return 'Enter a number';
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                value: _inspectionFrequencyDays,
+                decoration: const InputDecoration(
+                  labelText: 'Inspection Frequency',
+                  prefixIcon: Icon(Icons.schedule),
+                ),
+                items: _frequencyOptions.entries
+                    .map((e) => DropdownMenuItem(
+                        value: e.key, child: Text(e.value)))
+                    .toList(),
+                onChanged: (v) =>
+                    setState(() => _inspectionFrequencyDays = v!),
               ),
               const SizedBox(height: 32),
               SizedBox(
