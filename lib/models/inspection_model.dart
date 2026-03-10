@@ -120,4 +120,9 @@ class Inspection {
         ChecklistItem(name: 'Horn'),
         ChecklistItem(name: 'Seatbelt'),
       ];
+
+  static List<ChecklistItem> checklistFromNames(List<String> names) {
+    if (names.isEmpty) return defaultChecklist();
+    return names.map((n) => ChecklistItem(name: n)).toList();
+  }
 }

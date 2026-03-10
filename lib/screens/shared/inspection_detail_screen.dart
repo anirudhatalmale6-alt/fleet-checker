@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 import '../../models/inspection_model.dart';
+import '../../services/pdf_report_service.dart';
 import '../../theme/app_theme.dart';
 
 class InspectionDetailScreen extends StatelessWidget {
@@ -14,6 +16,13 @@ class InspectionDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Inspection - ${inspection.vanRegistration}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            tooltip: 'Download PDF Report',
+            onPressed: () => _downloadPdf(context),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -276,6 +285,22 @@ class InspectionDetailScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _downloadPdf(BuildContext context) async {
+    try {
+      final pdf =
+          await PdfReportService.generateInspectionReport(inspection);
+      final bytes = await pdf.save();
+      final fileName =
+          'Inspection_${inspection.vanRegistration}_${DateFormat('yyyy-MM-dd').format(inspection.date)}.pdf';
+      await Printing.sharePdf(bytes: bytes, filename: fileName);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error generating PDF: $e')));
+      }
+    }
   }
 
   void _showFullPhoto(BuildContext context, List<String> urls, int initialIndex) {

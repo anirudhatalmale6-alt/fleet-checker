@@ -11,6 +11,7 @@ class Van {
   final String ownerId;
   String vehicleType;
   int inspectionFrequencyDays;
+  List<String> customChecklist;
   final DateTime createdAt;
 
   Van({
@@ -24,6 +25,7 @@ class Van {
     required this.ownerId,
     this.vehicleType = 'Van',
     this.inspectionFrequencyDays = 1,
+    this.customChecklist = const [],
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -39,6 +41,7 @@ class Van {
         'ownerId': ownerId,
         'vehicleType': vehicleType,
         'inspectionFrequencyDays': inspectionFrequencyDays,
+        'customChecklist': customChecklist,
         'createdAt': Timestamp.fromDate(createdAt),
       };
 
@@ -54,6 +57,7 @@ class Van {
       ownerId: map['ownerId'] ?? '',
       vehicleType: map['vehicleType'] ?? 'Van',
       inspectionFrequencyDays: map['inspectionFrequencyDays'] ?? 1,
+      customChecklist: List<String>.from(map['customChecklist'] ?? []),
       createdAt: map['createdAt'] is Timestamp
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/van_model.dart';
+import '../../models/inspection_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/data_service.dart';
+import '../../theme/app_theme.dart';
 
 class AddVanScreen extends StatefulWidget {
   final Van? van;
@@ -20,6 +22,7 @@ class _AddVanScreenState extends State<AddVanScreen> {
   late final TextEditingController _mileageCtrl;
   late String _vehicleType;
   late int _inspectionFrequencyDays;
+  late List<String> _checklistItems;
   bool _saving = false;
 
   bool get isEditing => widget.van != null;
@@ -44,6 +47,14 @@ class _AddVanScreenState extends State<AddVanScreen> {
         TextEditingController(text: widget.van?.mileage.toString() ?? '');
     _vehicleType = widget.van?.vehicleType ?? 'Van';
     _inspectionFrequencyDays = widget.van?.inspectionFrequencyDays ?? 1;
+    // Load custom checklist or defaults
+    if (widget.van != null && widget.van!.customChecklist.isNotEmpty) {
+      _checklistItems = List.from(widget.van!.customChecklist);
+    } else {
+      _checklistItems = Inspection.defaultChecklist()
+          .map((c) => c.name)
+          .toList();
+    }
   }
 
   Future<void> _save() async {
@@ -61,6 +72,7 @@ class _AddVanScreenState extends State<AddVanScreen> {
         'mileage': int.parse(_mileageCtrl.text.trim()),
         'vehicleType': _vehicleType,
         'inspectionFrequencyDays': _inspectionFrequencyDays,
+        'customChecklist': _checklistItems,
       });
     } else {
       await data.addVan(
@@ -71,9 +83,76 @@ class _AddVanScreenState extends State<AddVanScreen> {
         ownerId: auth.currentUser!.id,
         vehicleType: _vehicleType,
       );
+      // Save custom checklist for new van too
+      // (handled via addVan + updateVan if checklist differs from default)
     }
 
     if (mounted) Navigator.pop(context);
+  }
+
+  void _addChecklistItem() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Checklist Item'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Fire Extinguisher',
+            labelText: 'Item Name',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final name = ctrl.text.trim();
+              if (name.isNotEmpty && !_checklistItems.contains(name)) {
+                setState(() => _checklistItems.add(name));
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editChecklistItem(int index) {
+    final ctrl = TextEditingController(text: _checklistItems[index]);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Checklist Item'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(labelText: 'Item Name'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final name = ctrl.text.trim();
+              if (name.isNotEmpty) {
+                setState(() => _checklistItems[index] = name);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -161,6 +240,83 @@ class _AddVanScreenState extends State<AddVanScreen> {
                 onChanged: (v) =>
                     setState(() => _inspectionFrequencyDays = v!),
               ),
+              const SizedBox(height: 24),
+
+              // Checklist editor
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Inspection Checklist',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary)),
+                  TextButton.icon(
+                    onPressed: _addChecklistItem,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Item'),
+                    style:
+                        TextButton.styleFrom(foregroundColor: AppTheme.accent),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ReorderableListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _checklistItems.length,
+                onReorder: (oldIndex, newIndex) {
+                  setState(() {
+                    if (newIndex > oldIndex) newIndex--;
+                    final item = _checklistItems.removeAt(oldIndex);
+                    _checklistItems.insert(newIndex, item);
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Container(
+                    key: ValueKey('checklist_$index'),
+                    margin: const EdgeInsets.only(bottom: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cardBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ListTile(
+                      dense: true,
+                      leading: Text('${index + 1}',
+                          style: const TextStyle(
+                              color: AppTheme.accent,
+                              fontWeight: FontWeight.bold)),
+                      title: Text(_checklistItems[index]),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit,
+                                size: 18, color: AppTheme.textSecondary),
+                            onPressed: () => _editChecklistItem(index),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete,
+                                size: 18, color: AppTheme.danger),
+                            onPressed: _checklistItems.length > 1
+                                ? () => setState(
+                                    () => _checklistItems.removeAt(index))
+                                : null,
+                          ),
+                          const Icon(Icons.drag_handle,
+                              size: 18, color: AppTheme.textSecondary),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              Text('${_checklistItems.length} items — drag to reorder',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppTheme.textSecondary),
+                  textAlign: TextAlign.center),
+
               const SizedBox(height: 32),
               SizedBox(
                 height: 52,

@@ -40,7 +40,7 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
   void initState() {
     super.initState();
     _mileageCtrl.text = widget.van.mileage.toString();
-    _checklist = Inspection.defaultChecklist();
+    _checklist = Inspection.checklistFromNames(widget.van.customChecklist);
   }
 
   void _next() {
