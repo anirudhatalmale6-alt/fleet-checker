@@ -14,6 +14,7 @@ abstract class AuthService extends ChangeNotifier {
     required String name,
     required UserRole role,
     String? ownerId,
+    String? companyName,
   });
 
   Future<String?> login(String email, String password);
@@ -32,6 +33,8 @@ abstract class AuthService extends ChangeNotifier {
     required String password,
     required String ownerId,
   });
+
+  Future<void> updateProfile(Map<String, dynamic> data);
 
   Stream<List<AppUser>> watchDriversForOwner(String ownerId);
   Future<List<AppUser>> getDriversForOwner(String ownerId);

@@ -16,6 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _companyCtrl = TextEditingController();
   UserRole _role = UserRole.owner;
   bool _loading = false;
   String? _error;
@@ -32,6 +33,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           password: _passwordCtrl.text,
           name: _nameCtrl.text.trim(),
           role: _role,
+          companyName: _role == UserRole.owner
+              ? _companyCtrl.text.trim().isEmpty
+                  ? null
+                  : _companyCtrl.text.trim()
+              : null,
         );
 
     if (mounted) {
@@ -158,6 +164,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ],
                 ),
+                if (_role == UserRole.owner) ...[
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _companyCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Company Name (optional)',
+                      prefixIcon: Icon(Icons.business_outlined),
+                    ),
+                  ),
+                ],
                 if (_error != null) ...[
                   const SizedBox(height: 12),
                   Text(_error!, style: const TextStyle(color: AppTheme.danger)),
@@ -192,6 +208,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _companyCtrl.dispose();
     super.dispose();
   }
 }

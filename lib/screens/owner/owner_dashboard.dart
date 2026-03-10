@@ -14,6 +14,64 @@ import 'inspection_list_screen.dart';
 class OwnerDashboard extends StatelessWidget {
   const OwnerDashboard({super.key});
 
+  void _showEditProfileDialog(
+      BuildContext context, AuthService auth, AppUser user) {
+    final nameCtrl = TextEditingController(text: user.name);
+    final companyCtrl = TextEditingController(text: user.companyName ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: const Text('Edit Profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Full Name',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: companyCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Company Name',
+                prefixIcon: Icon(Icons.business_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final data = <String, dynamic>{};
+              final newName = nameCtrl.text.trim();
+              final newCompany = companyCtrl.text.trim();
+              if (newName.isNotEmpty && newName != user.name) {
+                data['name'] = newName;
+              }
+              if (newCompany != (user.companyName ?? '')) {
+                data['companyName'] = newCompany.isEmpty ? null : newCompany;
+              }
+              if (data.isNotEmpty) {
+                await auth.updateProfile(data);
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
@@ -24,6 +82,11 @@ class OwnerDashboard extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Fleet Checker'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit Profile',
+            onPressed: () => _showEditProfileDialog(context, auth, user),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => auth.logout(),
@@ -83,6 +146,16 @@ class OwnerDashboard extends StatelessWidget {
                         child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (user.companyName != null &&
+                            user.companyName!.isNotEmpty)
+                          Text(
+                            user.companyName!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.accentLight,
+                            ),
+                          ),
                         Text(
                           'Welcome, ${user.name}',
                           style: const TextStyle(

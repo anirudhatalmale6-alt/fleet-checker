@@ -47,6 +47,7 @@ class FirebaseAuthService extends AuthService {
     required String name,
     required UserRole role,
     String? ownerId,
+    String? companyName,
   }) async {
     try {
       final cred = await _auth.createUserWithEmailAndPassword(
@@ -72,6 +73,7 @@ class FirebaseAuthService extends AuthService {
         name: name,
         role: role,
         ownerId: ownerId,
+        companyName: role == UserRole.owner ? companyName : null,
       );
 
       await _firestore.collection('users').doc(user.id).set(user.toMap());
@@ -104,6 +106,14 @@ class FirebaseAuthService extends AuthService {
   Future<void> logout() async {
     await _auth.signOut();
     _currentUser = null;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> updateProfile(Map<String, dynamic> data) async {
+    if (_currentUser == null) return;
+    await _firestore.collection('users').doc(_currentUser!.id).update(data);
+    await _loadUserProfile(_currentUser!.id);
     notifyListeners();
   }
 

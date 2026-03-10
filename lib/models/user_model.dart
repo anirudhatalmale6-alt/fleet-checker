@@ -6,6 +6,7 @@ class AppUser {
   final String name;
   final UserRole role;
   final String? ownerId; // For drivers, links to their owner
+  final String? companyName; // For owners
 
   AppUser({
     required this.id,
@@ -13,6 +14,7 @@ class AppUser {
     required this.name,
     required this.role,
     this.ownerId,
+    this.companyName,
   });
 
   Map<String, dynamic> toMap() => {
@@ -21,6 +23,7 @@ class AppUser {
         'name': name,
         'role': role.name,
         'ownerId': ownerId,
+        'companyName': companyName,
       };
 
   factory AppUser.fromMap(Map<String, dynamic> map) => AppUser(
@@ -29,5 +32,6 @@ class AppUser {
         name: map['name'],
         role: UserRole.values.byName(map['role']),
         ownerId: map['ownerId'],
+        companyName: map['companyName'],
       );
 }

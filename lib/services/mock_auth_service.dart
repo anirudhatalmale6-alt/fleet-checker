@@ -64,6 +64,7 @@ class MockAuthService extends AuthService {
     required String name,
     required UserRole role,
     String? ownerId,
+    String? companyName,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
 
@@ -88,6 +89,7 @@ class MockAuthService extends AuthService {
       name: name,
       role: role,
       ownerId: ownerId,
+      companyName: role == UserRole.owner ? companyName : null,
     );
 
     _users[user.id] = user;
@@ -121,6 +123,22 @@ class MockAuthService extends AuthService {
   @override
   Future<void> logout() async {
     _currentUser = null;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> updateProfile(Map<String, dynamic> data) async {
+    if (_currentUser == null) return;
+    final old = _currentUser!;
+    _currentUser = AppUser(
+      id: old.id,
+      email: old.email,
+      name: (data['name'] as String?) ?? old.name,
+      role: old.role,
+      ownerId: old.ownerId,
+      companyName: (data['companyName'] as String?) ?? old.companyName,
+    );
+    _users[old.id] = _currentUser!;
     notifyListeners();
   }
 
