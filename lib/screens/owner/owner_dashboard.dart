@@ -134,6 +134,8 @@ class OwnerDashboard extends StatelessWidget {
                         ),
                         // Overdue Inspections Section
                         ..._buildOverdueSection(vans, inspections),
+                        // Inspection Summary with Percentages
+                        ..._buildInspectionSummary(inspections, vans, overdueCount),
                         const SizedBox(height: 32),
                         const Text(
                           'Quick Actions',
@@ -297,6 +299,279 @@ List<Widget> _buildOverdueSection(List<Van> vans, List<Inspection> inspections) 
       );
     }),
   ];
+}
+
+List<Widget> _buildInspectionSummary(
+    List<Inspection> inspections, List<Van> vans, int overdueCount) {
+  if (inspections.isEmpty && vans.isEmpty) return [];
+
+  final total = inspections.length;
+  final passed =
+      inspections.where((i) => i.status == InspectionStatus.passed).length;
+  final failed =
+      inspections.where((i) => i.status == InspectionStatus.failed).length;
+
+  final now = DateTime.now();
+  final completedToday = inspections
+      .where((i) =>
+          i.date.year == now.year &&
+          i.date.month == now.month &&
+          i.date.day == now.day)
+      .length;
+  final assignedVans = vans.where((v) => v.assignedDriverId != null).length;
+
+  double pct(int count, int of) => of > 0 ? (count / of * 100) : 0;
+
+  // Per-checklist-item failure rates
+  final itemFailCounts = <String, int>{};
+  final itemTotalCounts = <String, int>{};
+  for (final insp in inspections) {
+    for (final item in insp.checklist) {
+      itemTotalCounts[item.name] = (itemTotalCounts[item.name] ?? 0) + 1;
+      if (item.status == CheckStatus.fail) {
+        itemFailCounts[item.name] = (itemFailCounts[item.name] ?? 0) + 1;
+      }
+    }
+  }
+
+  return [
+    const SizedBox(height: 28),
+    const Text(
+      'Inspection Summary',
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: AppTheme.textPrimary,
+      ),
+    ),
+    const SizedBox(height: 16),
+
+    // Status cards grid (like DAVIS Fleet)
+    Row(
+      children: [
+        _SummaryCard(
+          icon: Icons.check_circle,
+          label: 'Passed',
+          count: passed,
+          color: AppTheme.success,
+        ),
+        const SizedBox(width: 10),
+        _SummaryCard(
+          icon: Icons.warning,
+          label: 'Failed',
+          count: failed,
+          color: AppTheme.danger,
+        ),
+        const SizedBox(width: 10),
+        _SummaryCard(
+          icon: Icons.schedule,
+          label: 'Overdue',
+          count: overdueCount,
+          color: AppTheme.warning,
+        ),
+      ],
+    ),
+    const SizedBox(height: 20),
+
+    // Progress bars with percentages
+    Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ProgressRow(
+            label: 'Total inspections',
+            count: total,
+            percentage: 100,
+            color: AppTheme.accent,
+          ),
+          const SizedBox(height: 14),
+          _ProgressRow(
+            label: 'Passed inspections',
+            count: passed,
+            percentage: pct(passed, total),
+            color: AppTheme.success,
+          ),
+          const SizedBox(height: 14),
+          _ProgressRow(
+            label: 'Failed inspections',
+            count: failed,
+            percentage: pct(failed, total),
+            color: AppTheme.danger,
+          ),
+          const SizedBox(height: 14),
+          _ProgressRow(
+            label: 'Completed today',
+            count: completedToday,
+            percentage: assignedVans > 0
+                ? pct(completedToday, assignedVans)
+                : 0,
+            color: AppTheme.accentLight,
+          ),
+          const SizedBox(height: 14),
+          _ProgressRow(
+            label: 'Vehicles overdue',
+            count: overdueCount,
+            percentage: assignedVans > 0
+                ? pct(overdueCount, assignedVans)
+                : 0,
+            color: AppTheme.warning,
+          ),
+
+          // Top failing items
+          if (itemFailCounts.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text(
+              'Top Failing Items',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...(() {
+              final sorted = itemFailCounts.entries.toList()
+                ..sort((a, b) => b.value.compareTo(a.value));
+              return sorted.take(5).map((e) {
+                final itemTotal = itemTotalCounts[e.key] ?? 1;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _ProgressRow(
+                    label: e.key,
+                    count: e.value,
+                    percentage: pct(e.value, itemTotal),
+                    color: AppTheme.danger,
+                  ),
+                );
+              });
+            })(),
+          ],
+        ],
+      ),
+    ),
+  ];
+}
+
+class _SummaryCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+
+  const _SummaryCard({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgressRow extends StatelessWidget {
+  final String label;
+  final int count;
+  final double percentage;
+  final Color color;
+
+  const _ProgressRow({
+    required this.label,
+    required this.count,
+    required this.percentage,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: percentage / 100,
+                  backgroundColor: AppTheme.surface,
+                  color: color,
+                  minHeight: 8,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 80,
+              child: Text(
+                '$count – ${percentage.toStringAsFixed(0)}%',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textPrimary,
+                ),
+                textAlign: TextAlign.right,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class _StatCard extends StatelessWidget {
