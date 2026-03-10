@@ -25,6 +25,14 @@ abstract class AuthService extends ChangeNotifier {
     required String ownerId,
   });
 
+  /// Owner creates a driver account directly (no email invite needed)
+  Future<String?> addDriver({
+    required String name,
+    required String email,
+    required String password,
+    required String ownerId,
+  });
+
   Stream<List<AppUser>> watchDriversForOwner(String ownerId);
   Future<List<AppUser>> getDriversForOwner(String ownerId);
   Stream<List<Map<String, dynamic>>> watchInvitesForOwner(String ownerId);

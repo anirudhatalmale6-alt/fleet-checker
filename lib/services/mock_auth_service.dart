@@ -142,6 +142,30 @@ class MockAuthService extends AuthService {
   }
 
   @override
+  Future<String?> addDriver({
+    required String name,
+    required String email,
+    required String password,
+    required String ownerId,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (_passwords.containsKey(email.toLowerCase())) {
+      return 'Email already registered';
+    }
+    final driver = AppUser(
+      id: _uuid.v4(),
+      email: email,
+      name: name,
+      role: UserRole.driver,
+      ownerId: ownerId,
+    );
+    _users[driver.id] = driver;
+    _passwords[email.toLowerCase()] = password;
+    _emitDrivers(ownerId);
+    return null;
+  }
+
+  @override
   Stream<List<AppUser>> watchDriversForOwner(String ownerId) {
     // Emit current drivers immediately, then updates
     final initial = _users.values

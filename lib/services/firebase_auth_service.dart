@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import 'auth_service.dart';
@@ -120,6 +121,49 @@ class FirebaseAuthService extends AuthService {
         'createdAt': FieldValue.serverTimestamp(),
       });
       return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  @override
+  Future<String?> addDriver({
+    required String name,
+    required String email,
+    required String password,
+    required String ownerId,
+  }) async {
+    try {
+      // Use a secondary Firebase App so the owner stays logged in
+      FirebaseApp? secondaryApp;
+      try {
+        secondaryApp = Firebase.app('driverCreator');
+      } catch (_) {
+        secondaryApp = await Firebase.initializeApp(
+          name: 'driverCreator',
+          options: Firebase.app().options,
+        );
+      }
+
+      final secondaryAuth = fb.FirebaseAuth.instanceFor(app: secondaryApp);
+      final cred = await secondaryAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final driver = AppUser(
+        id: cred.user!.uid,
+        email: email,
+        name: name,
+        role: UserRole.driver,
+        ownerId: ownerId,
+      );
+
+      await _firestore.collection('users').doc(driver.id).set(driver.toMap());
+      await secondaryAuth.signOut();
+      return null;
+    } on fb.FirebaseAuthException catch (e) {
+      return e.message ?? 'Failed to add driver';
     } catch (e) {
       return e.toString();
     }
