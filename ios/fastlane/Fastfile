@@ -47,13 +47,21 @@ platform :ios do
       adhoc: false
     )
 
+    # Get profile info from lane context
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+    profile_uuid = lane_context[SharedValues::SIGH_UUID]
+    profile_path = lane_context[SharedValues::SIGH_PROFILE_PATH]
+    UI.message("Profile name: #{profile_name}")
+    UI.message("Profile UUID: #{profile_uuid}")
+    UI.message("Profile path: #{profile_path}")
+
     # Update Xcode project to use manual signing with fetched profile
     update_code_signing_settings(
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
       team_id: "V9679HX2M6",
       bundle_identifier: "com.fleetchecker.fleetchecker",
-      profile_name: ENV["sigh_com.fleetchecker.fleetchecker_appstore_profile-name"],
+      profile_name: profile_name,
       code_sign_identity: "iPhone Distribution"
     )
 
@@ -65,9 +73,13 @@ platform :ios do
       output_directory: "../build/ios/ipa",
       output_name: "FleetChecker.ipa",
       clean: false,
+      xcargs: "PROVISIONING_PROFILE_SPECIFIER='#{profile_name}' OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
       export_options: {
         teamID: "V9679HX2M6",
-        signingStyle: "manual"
+        signingStyle: "manual",
+        provisioningProfiles: {
+          "com.fleetchecker.fleetchecker" => profile_name
+        }
       }
     )
 
