@@ -25,9 +25,10 @@ platform :ios do
     )
 
     # Fetch or create an iOS Distribution certificate
+    keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
     cert(
       api_key: api_key,
-      keychain_name: keychain_name,
+      keychain_path: keychain_path,
       keychain_password: keychain_password,
       type: "distribution"
     )
