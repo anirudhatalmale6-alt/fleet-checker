@@ -43,6 +43,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '747477788438',
     projectId: 'vehicle-checker-7956a',
     storageBucket: 'vehicle-checker-7956a.firebasestorage.app',
-    iosBundleId: 'com.fleetchecker.fleetChecker',
+    iosBundleId: 'com.fleetchecker.fleetchecker',
   );
 }

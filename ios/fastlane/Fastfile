@@ -42,7 +42,7 @@ platform :ios do
     # Fetch or create an App Store provisioning profile
     sigh(
       api_key: api_key,
-      app_identifier: "com.fleetchecker.fleetChecker",
+      app_identifier: "com.fleetchecker.fleetchecker",
       force: false,
       adhoc: false
     )
@@ -52,8 +52,8 @@ platform :ios do
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
       team_id: "V9679HX2M6",
-      bundle_identifier: "com.fleetchecker.fleetChecker",
-      profile_name: ENV["sigh_com.fleetchecker.fleetChecker_appstore_profile-name"],
+      bundle_identifier: "com.fleetchecker.fleetchecker",
+      profile_name: ENV["sigh_com.fleetchecker.fleetchecker_appstore_profile-name"],
       code_sign_identity: "iPhone Distribution"
     )
 
