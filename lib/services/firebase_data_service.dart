@@ -121,8 +121,8 @@ class FirebaseDataService extends DataService {
     });
   }
 
-  // Storage uploads disabled until Firebase Storage is enabled
-  static const bool _storageEnabled = false;
+  // Storage uploads enabled (requires Firebase Blaze plan + Storage enabled)
+  static const bool _storageEnabled = true;
 
   @override
   Future<void> addInspection({
@@ -175,8 +175,9 @@ class FirebaseDataService extends DataService {
               signatureBytes, SettableMetadata(contentType: 'image/png'));
           signatureUrl = await sigRef.getDownloadURL();
         }
-      } catch (_) {
-        // Storage error — continue without photos/signature
+      } catch (e) {
+        // Log storage error but continue saving inspection without photos
+        print('Firebase Storage upload error: $e');
       }
     }
 
