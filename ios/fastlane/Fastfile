@@ -30,7 +30,7 @@ platform :ios do
       api_key: api_key,
       keychain_path: keychain_path,
       keychain_password: keychain_password,
-      type: "distribution"
+      development: false
     )
 
     # Fetch or create an App Store provisioning profile
