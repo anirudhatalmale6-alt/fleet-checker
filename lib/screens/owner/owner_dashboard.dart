@@ -6,13 +6,59 @@ import '../../models/inspection_model.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/data_service.dart';
+import '../../services/web_notification_helper.dart';
 import '../../theme/app_theme.dart';
 import 'van_list_screen.dart';
 import 'driver_list_screen.dart';
 import 'inspection_list_screen.dart';
+import 'settings_screen.dart';
 
-class OwnerDashboard extends StatelessWidget {
+class OwnerDashboard extends StatefulWidget {
   const OwnerDashboard({super.key});
+
+  @override
+  State<OwnerDashboard> createState() => _OwnerDashboardState();
+}
+
+class _OwnerDashboardState extends State<OwnerDashboard> {
+  int? _lastKnownInspectionCount;
+  int _todayNewCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _requestNotificationPermission();
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    final user = context.read<AuthService>().currentUser;
+    if (user != null && user.notifyPush) {
+      await WebNotificationHelper.requestPermission();
+    }
+  }
+
+  void _onInspectionsUpdated(List<Inspection> inspections) {
+    if (_lastKnownInspectionCount == null) {
+      _lastKnownInspectionCount = inspections.length;
+      return;
+    }
+
+    if (inspections.length > _lastKnownInspectionCount!) {
+      final newCount = inspections.length - _lastKnownInspectionCount!;
+      _todayNewCount += newCount;
+
+      final user = context.read<AuthService>().currentUser;
+      if (user != null && user.notifyPush) {
+        final newest = inspections.first;
+        WebNotificationHelper.show(
+          'New Inspection Submitted',
+          body:
+              '${newest.driverName} inspected ${newest.vanRegistration} — ${newest.status.name.toUpperCase()}',
+        );
+      }
+    }
+    _lastKnownInspectionCount = inspections.length;
+  }
 
   void _showEditProfileDialog(
       BuildContext context, AuthService auth, AppUser user) {
@@ -88,6 +134,50 @@ class OwnerDashboard extends StatelessWidget {
             onPressed: () => _showEditProfileDialog(context, auth, user),
           ),
           IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          ),
+          // Notification bell with badge
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                tooltip: 'Inspections',
+                onPressed: () {
+                  setState(() => _todayNewCount = 0);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const InspectionListScreen()));
+                },
+              ),
+              if (_todayNewCount > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.danger,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints:
+                        const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Text(
+                      '$_todayNewCount',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => auth.logout(),
           ),
@@ -105,6 +195,12 @@ class OwnerDashboard extends StatelessWidget {
                 stream: data.watchInspectionsForOwner(user.id),
                 builder: (context, inspSnap) {
                   final inspections = inspSnap.data ?? [];
+
+                  // Check for new inspections and trigger notifications
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _onInspectionsUpdated(inspections);
+                  });
+
                   final today = DateTime.now();
                   final todayInspections = inspections.where((i) =>
                       i.date.year == today.year &&

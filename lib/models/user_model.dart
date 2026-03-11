@@ -7,6 +7,8 @@ class AppUser {
   final UserRole role;
   final String? ownerId; // For drivers, links to their owner
   final String? companyName; // For owners
+  final bool notifyPush; // Browser push notifications
+  final bool notifyEmail; // Email notifications
 
   AppUser({
     required this.id,
@@ -15,6 +17,8 @@ class AppUser {
     required this.role,
     this.ownerId,
     this.companyName,
+    this.notifyPush = true,
+    this.notifyEmail = false,
   });
 
   Map<String, dynamic> toMap() => {
@@ -24,6 +28,8 @@ class AppUser {
         'role': role.name,
         'ownerId': ownerId,
         'companyName': companyName,
+        'notifyPush': notifyPush,
+        'notifyEmail': notifyEmail,
       };
 
   factory AppUser.fromMap(Map<String, dynamic> map) => AppUser(
@@ -33,5 +39,7 @@ class AppUser {
         role: UserRole.values.byName(map['role']),
         ownerId: map['ownerId'],
         companyName: map['companyName'],
+        notifyPush: map['notifyPush'] ?? true,
+        notifyEmail: map['notifyEmail'] ?? false,
       );
 }

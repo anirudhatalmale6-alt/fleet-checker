@@ -136,7 +136,11 @@ class MockAuthService extends AuthService {
       name: (data['name'] as String?) ?? old.name,
       role: old.role,
       ownerId: old.ownerId,
-      companyName: (data['companyName'] as String?) ?? old.companyName,
+      companyName: data.containsKey('companyName')
+          ? data['companyName'] as String?
+          : old.companyName,
+      notifyPush: (data['notifyPush'] as bool?) ?? old.notifyPush,
+      notifyEmail: (data['notifyEmail'] as bool?) ?? old.notifyEmail,
     );
     _users[old.id] = _currentUser!;
     notifyListeners();
