@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "747477788438",
+    "project_id": "vehicle-checker-7956a",
+    "storage_bucket": "vehicle-checker-7956a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:747477788438:android:2fc9ac8802b0a034a1237",
+        "android_client_info": {
+          "package_name": "com.fleetchecker.fleet_checker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxO-8mf_PFLaBiH-zGTDrHs6HJM1y8Eo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

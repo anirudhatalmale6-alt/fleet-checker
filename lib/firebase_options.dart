@@ -30,16 +30,16 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBSaxiEZiyCZcgDTYo2KuD_G9T5DIkHyiQ',
-    appId: '1:747477788438:web:f49d8e8c854cfd774a1237',
+    apiKey: 'AIzaSyBxO-8mf_PFLaBiH-zGTDrHs6HJM1y8Eo',
+    appId: '1:747477788438:android:2fc9ac8802b0a034a1237',
     messagingSenderId: '747477788438',
     projectId: 'vehicle-checker-7956a',
     storageBucket: 'vehicle-checker-7956a.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBSaxiEZiyCZcgDTYo2KuD_G9T5DIkHyiQ',
-    appId: '1:747477788438:web:f49d8e8c854cfd774a1237',
+    apiKey: 'AIzaSyDer51drbdsSKhuPhIPt02yturrt3n_KE',
+    appId: '1:747477788438:ios:3503a2662ead07094a1237',
     messagingSenderId: '747477788438',
     projectId: 'vehicle-checker-7956a',
     storageBucket: 'vehicle-checker-7956a.firebasestorage.app',
