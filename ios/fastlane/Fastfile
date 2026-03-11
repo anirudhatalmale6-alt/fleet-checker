@@ -30,8 +30,26 @@ platform :ios do
       lock_when_sleeps: false
     )
 
-    # Fetch or create an iOS Distribution certificate
     keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
+
+    # First revoke any existing distribution certs we don't have keys for,
+    # then create a fresh one. This avoids hitting the 2-cert limit.
+    begin
+      # Try to list existing certs and revoke them since we can't reuse
+      # (private keys from prior CI runs are lost)
+      require 'spaceship'
+      Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: api_key)
+      existing_certs = Spaceship::ConnectAPI::Certificate.all(filter: { certificateType: "DISTRIBUTION" })
+      UI.message("Found #{existing_certs.count} existing distribution certificates")
+      existing_certs.each do |c|
+        UI.message("Revoking cert #{c.id} to make room for fresh cert")
+        c.delete!
+      end
+      UI.message("All old certs revoked, creating fresh one...")
+    rescue => e
+      UI.message("Could not revoke old certs (#{e.message}), proceeding anyway...")
+    end
+
     cert(
       api_key: api_key,
       keychain_path: keychain_path,
