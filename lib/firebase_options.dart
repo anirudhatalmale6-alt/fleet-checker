@@ -38,7 +38,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDer51drbdsSKhuPhIPt02yturrt3n_KE',
+    apiKey: 'AIzaSyBSaxiEZiyCZcgDTYo2KuD_G9T5DIkHyiQ',
     appId: '1:747477788438:ios:3503a2662ead07094a1237',
     messagingSenderId: '747477788438',
     projectId: 'vehicle-checker-7956a',
