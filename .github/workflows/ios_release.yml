@@ -30,10 +30,59 @@ jobs:
         run: |
           mkdir -p ~/.private_keys
           printf '%s' "$APP_STORE_CONNECT_KEY_BASE64" | base64 -D > ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-          echo "Key file created:"
-          wc -c ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-          head -1 ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-          tail -1 ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+          KEY_PATH=~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+          echo "Key file size: $(wc -c < "$KEY_PATH") bytes"
+          echo "Key header: $(head -1 "$KEY_PATH")"
+          echo "Key footer: $(tail -1 "$KEY_PATH")"
+          # Validate key is a valid EC key
+          openssl ec -in "$KEY_PATH" -noout 2>&1 && echo "Key validation: OK" || echo "Key validation: FAILED"
+
+      - name: Verify API Key with Apple
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          KEY_PATH=~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+          # Create JWT token using Python (available on macOS runner)
+          TOKEN=$(python3 -c "
+          import jwt, time, sys
+          key_id = '$APP_STORE_CONNECT_KEY_ID'
+          issuer_id = '$APP_STORE_CONNECT_ISSUER_ID'
+          with open('$KEY_PATH', 'r') as f:
+              private_key = f.read()
+          now = int(time.time())
+          payload = {'iss': issuer_id, 'iat': now, 'exp': now + 1200, 'aud': 'appstoreconnect-v1'}
+          headers = {'kid': key_id, 'typ': 'JWT'}
+          token = jwt.encode(payload, private_key, algorithm='ES256', headers=headers)
+          print(token)
+          " 2>&1) || {
+            echo "JWT creation failed, installing PyJWT..."
+            pip3 install PyJWT cryptography
+            TOKEN=$(python3 -c "
+            import jwt, time
+            key_id = '$APP_STORE_CONNECT_KEY_ID'
+            issuer_id = '$APP_STORE_CONNECT_ISSUER_ID'
+            with open('$KEY_PATH', 'r') as f:
+                private_key = f.read()
+            now = int(time.time())
+            payload = {'iss': issuer_id, 'iat': now, 'exp': now + 1200, 'aud': 'appstoreconnect-v1'}
+            headers = {'kid': key_id, 'typ': 'JWT'}
+            token = jwt.encode(payload, private_key, algorithm='ES256', headers=headers)
+            print(token)
+            ")
+          }
+          echo "JWT token length: ${#TOKEN}"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer $TOKEN" "https://api.appstoreconnect.apple.com/v1/apps?limit=1")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "API response code: $HTTP_CODE"
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "API key verification: SUCCESS"
+            echo "$BODY" | python3 -c "import sys,json; data=json.load(sys.stdin); [print(f'App: {a[\"attributes\"][\"name\"]}') for a in data.get('data',[])]"
+          else
+            echo "API key verification: FAILED"
+            echo "$BODY" | head -5
+          fi
 
       - name: Build Flutter iOS (no codesign)
         run: flutter build ios --release --no-codesign --build-number=${{ github.event.inputs.build_number }}
