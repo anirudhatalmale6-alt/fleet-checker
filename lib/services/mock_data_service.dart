@@ -128,6 +128,8 @@ class MockDataService extends DataService {
     required int mileage,
     required String ownerId,
     String vehicleType = 'Van',
+    int inspectionFrequencyDays = 1,
+    List<String> customChecklist = const [],
   }) async {
     await Future.delayed(const Duration(milliseconds: 200));
     _vans.add(Van(
@@ -138,6 +140,8 @@ class MockDataService extends DataService {
       mileage: mileage,
       ownerId: ownerId,
       vehicleType: vehicleType,
+      inspectionFrequencyDays: inspectionFrequencyDays,
+      customChecklist: customChecklist,
     ));
     _vansController.add(_vans);
   }

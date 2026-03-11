@@ -24,6 +24,8 @@ class _AddVanScreenState extends State<AddVanScreen> {
   late int _inspectionFrequencyDays;
   late List<String> _checklistItems;
   bool _saving = false;
+  bool _isCustomFrequency = false;
+  late final TextEditingController _customDaysCtrl;
 
   bool get isEditing => widget.van != null;
 
@@ -35,6 +37,7 @@ class _AddVanScreenState extends State<AddVanScreen> {
     7: 'Weekly',
     14: 'Every 2 weeks',
     30: 'Monthly',
+    0: 'Custom',
   };
 
   @override
@@ -46,7 +49,17 @@ class _AddVanScreenState extends State<AddVanScreen> {
     _mileageCtrl =
         TextEditingController(text: widget.van?.mileage.toString() ?? '');
     _vehicleType = widget.van?.vehicleType ?? 'Van';
-    _inspectionFrequencyDays = widget.van?.inspectionFrequencyDays ?? 1;
+    final freq = widget.van?.inspectionFrequencyDays ?? 1;
+    // Check if frequency matches a preset option
+    if (_frequencyOptions.containsKey(freq) && freq != 0) {
+      _inspectionFrequencyDays = freq;
+      _isCustomFrequency = false;
+    } else {
+      _inspectionFrequencyDays = 0; // Custom
+      _isCustomFrequency = true;
+    }
+    _customDaysCtrl = TextEditingController(
+        text: _isCustomFrequency ? freq.toString() : '');
     // Load custom checklist or defaults
     if (widget.van != null && widget.van!.customChecklist.isNotEmpty) {
       _checklistItems = List.from(widget.van!.customChecklist);
@@ -64,6 +77,11 @@ class _AddVanScreenState extends State<AddVanScreen> {
     final data = context.read<DataService>();
     final auth = context.read<AuthService>();
 
+    // Resolve actual frequency days
+    final freq = _isCustomFrequency
+        ? int.tryParse(_customDaysCtrl.text.trim()) ?? 1
+        : _inspectionFrequencyDays;
+
     if (isEditing) {
       await data.updateVan(widget.van!.id, {
         'registration': _regCtrl.text.trim().toUpperCase(),
@@ -71,7 +89,7 @@ class _AddVanScreenState extends State<AddVanScreen> {
         'model': _modelCtrl.text.trim(),
         'mileage': int.parse(_mileageCtrl.text.trim()),
         'vehicleType': _vehicleType,
-        'inspectionFrequencyDays': _inspectionFrequencyDays,
+        'inspectionFrequencyDays': freq,
         'customChecklist': _checklistItems,
       });
     } else {
@@ -82,9 +100,9 @@ class _AddVanScreenState extends State<AddVanScreen> {
         mileage: int.parse(_mileageCtrl.text.trim()),
         ownerId: auth.currentUser!.id,
         vehicleType: _vehicleType,
+        inspectionFrequencyDays: freq,
+        customChecklist: _checklistItems,
       );
-      // Save custom checklist for new van too
-      // (handled via addVan + updateVan if checklist differs from default)
     }
 
     if (mounted) Navigator.pop(context);
@@ -237,9 +255,32 @@ class _AddVanScreenState extends State<AddVanScreen> {
                     .map((e) => DropdownMenuItem(
                         value: e.key, child: Text(e.value)))
                     .toList(),
-                onChanged: (v) =>
-                    setState(() => _inspectionFrequencyDays = v!),
+                onChanged: (v) {
+                  setState(() {
+                    _inspectionFrequencyDays = v!;
+                    _isCustomFrequency = v == 0;
+                  });
+                },
               ),
+              if (_isCustomFrequency) ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _customDaysCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Custom Frequency (days)',
+                    prefixIcon: Icon(Icons.edit_calendar),
+                    hintText: 'e.g. 5',
+                  ),
+                  validator: (v) {
+                    if (!_isCustomFrequency) return null;
+                    if (v == null || v.isEmpty) return 'Required';
+                    final n = int.tryParse(v);
+                    if (n == null || n < 1) return 'Enter a number (1+)';
+                    return null;
+                  },
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Checklist editor
@@ -344,6 +385,7 @@ class _AddVanScreenState extends State<AddVanScreen> {
     _makeCtrl.dispose();
     _modelCtrl.dispose();
     _mileageCtrl.dispose();
+    _customDaysCtrl.dispose();
     super.dispose();
   }
 }

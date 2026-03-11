@@ -17,6 +17,8 @@ abstract class DataService extends ChangeNotifier {
     required int mileage,
     required String ownerId,
     String vehicleType = 'Van',
+    int inspectionFrequencyDays = 1,
+    List<String> customChecklist = const [],
   });
 
   Future<void> updateVan(String vanId, Map<String, dynamic> data);

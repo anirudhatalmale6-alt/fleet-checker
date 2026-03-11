@@ -54,6 +54,8 @@ class FirebaseDataService extends DataService {
     required int mileage,
     required String ownerId,
     String vehicleType = 'Van',
+    int inspectionFrequencyDays = 1,
+    List<String> customChecklist = const [],
   }) async {
     await _firestore.collection('vans').add({
       'registration': registration.toUpperCase(),
@@ -62,7 +64,8 @@ class FirebaseDataService extends DataService {
       'mileage': mileage,
       'ownerId': ownerId,
       'vehicleType': vehicleType,
-      'inspectionFrequencyDays': 1,
+      'inspectionFrequencyDays': inspectionFrequencyDays,
+      'customChecklist': customChecklist,
       'assignedDriverId': null,
       'assignedDriverName': null,
       'createdAt': FieldValue.serverTimestamp(),
