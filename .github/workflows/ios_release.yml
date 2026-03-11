@@ -23,18 +23,24 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false
+
       - name: Set up App Store Connect API Key
         env:
           APP_STORE_CONNECT_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
         run: |
-          mkdir -p ~/.private_keys
-          printf '%s' "$APP_STORE_CONNECT_KEY_BASE64" | base64 -D > ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-          KEY_PATH=~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+          KEY_DIR="$HOME/.private_keys"
+          mkdir -p "$KEY_DIR"
+          printf '%s' "$APP_STORE_CONNECT_KEY_BASE64" | base64 -D > "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          KEY_PATH="$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
           echo "Key file size: $(wc -c < "$KEY_PATH") bytes"
           echo "Key header: $(head -1 "$KEY_PATH")"
           echo "Key footer: $(tail -1 "$KEY_PATH")"
-          # Validate key is a valid EC key
           openssl ec -in "$KEY_PATH" -noout 2>&1 && echo "Key validation: OK" || echo "Key validation: FAILED"
 
       - name: Verify API Key with Apple
@@ -42,46 +48,42 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
-          KEY_PATH=~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-          # Create JWT token using Python (available on macOS runner)
-          TOKEN=$(python3 -c "
-          import jwt, time, sys
-          key_id = '$APP_STORE_CONNECT_KEY_ID'
-          issuer_id = '$APP_STORE_CONNECT_ISSUER_ID'
-          with open('$KEY_PATH', 'r') as f:
-              private_key = f.read()
-          now = int(time.time())
-          payload = {'iss': issuer_id, 'iat': now, 'exp': now + 1200, 'aud': 'appstoreconnect-v1'}
-          headers = {'kid': key_id, 'typ': 'JWT'}
-          token = jwt.encode(payload, private_key, algorithm='ES256', headers=headers)
-          print(token)
-          " 2>&1) || {
-            echo "JWT creation failed, installing PyJWT..."
-            pip3 install PyJWT cryptography
-            TOKEN=$(python3 -c "
-            import jwt, time
-            key_id = '$APP_STORE_CONNECT_KEY_ID'
-            issuer_id = '$APP_STORE_CONNECT_ISSUER_ID'
-            with open('$KEY_PATH', 'r') as f:
-                private_key = f.read()
-            now = int(time.time())
-            payload = {'iss': issuer_id, 'iat': now, 'exp': now + 1200, 'aud': 'appstoreconnect-v1'}
-            headers = {'kid': key_id, 'typ': 'JWT'}
-            token = jwt.encode(payload, private_key, algorithm='ES256', headers=headers)
-            print(token)
-            ")
-          }
-          echo "JWT token length: ${#TOKEN}"
-          RESPONSE=$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer $TOKEN" "https://api.appstoreconnect.apple.com/v1/apps?limit=1")
-          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | head -n -1)
-          echo "API response code: $HTTP_CODE"
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "API key verification: SUCCESS"
-            echo "$BODY" | python3 -c "import sys,json; data=json.load(sys.stdin); [print(f'App: {a[\"attributes\"][\"name\"]}') for a in data.get('data',[])]"
+          KEY_PATH="$HOME/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          # Use Ruby (available) to create JWT and test API
+          gem install jwt 2>/dev/null || true
+          RESULT=$(ruby -e '
+            require "jwt"
+            require "net/http"
+            require "json"
+            key_id = ENV["APP_STORE_CONNECT_KEY_ID"]
+            issuer_id = ENV["APP_STORE_CONNECT_ISSUER_ID"]
+            key_path = "'"$KEY_PATH"'"
+            private_key = OpenSSL::PKey::EC.new(File.read(key_path))
+            now = Time.now.to_i
+            payload = { iss: issuer_id, iat: now, exp: now + 1200, aud: "appstoreconnect-v1" }
+            token = JWT.encode(payload, private_key, "ES256", { kid: key_id, typ: "JWT" })
+            uri = URI("https://api.appstoreconnect.apple.com/v1/apps?limit=1")
+            req = Net::HTTP::Get.new(uri)
+            req["Authorization"] = "Bearer #{token}"
+            http = Net::HTTP.new(uri.host, uri.port)
+            http.use_ssl = true
+            resp = http.request(req)
+            puts "HTTP #{resp.code}"
+            if resp.code == "200"
+              data = JSON.parse(resp.body)
+              data["data"].each { |app| puts "App: #{app["attributes"]["name"]}" }
+              puts "SUCCESS"
+            else
+              puts resp.body[0..200]
+              puts "FAILED"
+            end
+          ')
+          echo "$RESULT"
+          if echo "$RESULT" | grep -q "SUCCESS"; then
+            echo "API key verification passed!"
           else
-            echo "API key verification: FAILED"
-            echo "$BODY" | head -5
+            echo "API key verification failed - check credentials"
+            exit 1
           fi
 
       - name: Build Flutter iOS (no codesign)
@@ -97,8 +99,12 @@ jobs:
         env:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_KEY_PATH: ~/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
+          APP_STORE_CONNECT_KEY_PATH: ${{ format('{0}/.private_keys/AuthKey_{1}.p8', github.workspace, secrets.APP_STORE_CONNECT_KEY_ID) }}
         run: |
+          # Use absolute HOME path for key
+          export APP_STORE_CONNECT_KEY_PATH="$HOME/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          echo "Fastlane key path: $APP_STORE_CONNECT_KEY_PATH"
+          ls -la "$APP_STORE_CONNECT_KEY_PATH"
           cd ios
           bundle exec fastlane release
 
