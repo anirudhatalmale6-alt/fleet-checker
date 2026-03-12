@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../models/van_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/data_service.dart';
+import '../../services/subscription_service.dart';
 import '../../theme/app_theme.dart';
 import 'add_van_screen.dart';
+import 'subscription_screen.dart';
 
 class VanListScreen extends StatelessWidget {
   const VanListScreen({super.key});
@@ -16,11 +18,26 @@ class VanListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Vehicles')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.push(
-            context, MaterialPageRoute(builder: (_) => const AddVanScreen())),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Vehicle'),
+      floatingActionButton: StreamBuilder<List<Van>>(
+        stream: data.watchVansForOwner(auth.currentUser!.id),
+        builder: (context, vanSnap) {
+          final vans = vanSnap.data ?? [];
+          final sub = context.watch<SubscriptionService>();
+          final canAdd = sub.canAddVan(vans.length);
+          return FloatingActionButton.extended(
+            onPressed: () {
+              if (!sub.ownerSubscribed || !canAdd) {
+                _showUpgradeDialog(context, sub, vans.length);
+                return;
+              }
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const AddVanScreen()));
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Vehicle'),
+            backgroundColor: canAdd ? AppTheme.accent : AppTheme.textSecondary,
+          );
+        },
       ),
       body: StreamBuilder<List<Van>>(
         stream: data.watchVansForOwner(auth.currentUser!.id),
@@ -156,6 +173,42 @@ class VanListScreen extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showUpgradeDialog(
+      BuildContext context, SubscriptionService sub, int currentVans) {
+    String message;
+    if (!sub.ownerSubscribed) {
+      message = 'You need an active Owner subscription to add vehicles.';
+    } else if (sub.vanLimit == 0) {
+      message = 'You need a Van plan to add vehicles.';
+    } else {
+      message =
+          'You\'ve reached your limit of ${sub.vanLimit} vans. Upgrade your plan to add more.';
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: const Text('Subscription Required'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+            },
+            child: const Text('View Plans'),
+          ),
+        ],
       ),
     );
   }

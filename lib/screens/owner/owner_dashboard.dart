@@ -12,6 +12,7 @@ import 'van_list_screen.dart';
 import 'driver_list_screen.dart';
 import 'inspection_list_screen.dart';
 import 'settings_screen.dart';
+import 'subscription_screen.dart';
 
 class OwnerDashboard extends StatefulWidget {
   const OwnerDashboard({super.key});
@@ -349,6 +350,17 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                               MaterialPageRoute(
                                   builder: (_) =>
                                       const InspectionListScreen())),
+                        ),
+                        const SizedBox(height: 12),
+                        _ActionTile(
+                          icon: Icons.card_membership,
+                          title: 'Subscription',
+                          subtitle: 'Manage your plan',
+                          onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const SubscriptionScreen())),
                         ),
                       ],
                     ),

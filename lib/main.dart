@@ -9,6 +9,7 @@ import 'services/firebase_auth_service.dart';
 import 'services/firebase_data_service.dart';
 import 'services/mock_auth_service.dart';
 import 'services/mock_data_service.dart';
+import 'services/subscription_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/owner/owner_dashboard.dart';
@@ -49,6 +50,9 @@ class FleetCheckerApp extends StatelessWidget {
               ? FirebaseDataService()
               : MockDataService(),
         ),
+        ChangeNotifierProvider<SubscriptionService>(
+          create: (_) => SubscriptionService(),
+        ),
       ],
       child: MaterialApp(
         title: 'Fleet Checker',
@@ -60,8 +64,15 @@ class FleetCheckerApp extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  String? _lastInitUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -74,10 +85,21 @@ class AuthGate extends StatelessWidget {
     }
 
     if (!auth.isLoggedIn) {
+      _lastInitUserId = null;
       return const LoginScreen();
     }
 
-    if (auth.currentUser!.role == UserRole.owner) {
+    final user = auth.currentUser!;
+
+    // Initialize subscription service once per user
+    if (user.role == UserRole.owner && _lastInitUserId != user.id) {
+      _lastInitUserId = user.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<SubscriptionService>().initialize(user.id);
+      });
+    }
+
+    if (user.role == UserRole.owner) {
       return const OwnerDashboard();
     }
 
