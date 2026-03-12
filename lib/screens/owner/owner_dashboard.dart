@@ -274,6 +274,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                               label: 'Vans',
                               value: '${vans.length}',
                               color: AppTheme.accent,
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VanListScreen())),
                             ),
                             const SizedBox(width: 12),
                             _StatCard(
@@ -281,6 +282,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                               label: 'Drivers',
                               value: '${drivers.length}',
                               color: AppTheme.accentLight,
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverListScreen())),
                             ),
                           ],
                         ),
@@ -753,18 +755,22 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.icon,
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppTheme.cardBg,
@@ -797,6 +803,7 @@ class _StatCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
@@ -16,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _loading = false;
+  bool _rememberMe = true;
   String? _error;
 
   Future<void> _login() async {
@@ -24,6 +27,15 @@ class _LoginScreenState extends State<LoginScreen> {
       _loading = true;
       _error = null;
     });
+
+    // Set persistence based on "Remember me" for web
+    if (kIsWeb) {
+      try {
+        await FirebaseAuth.instance.setPersistence(
+          _rememberMe ? Persistence.LOCAL : Persistence.SESSION,
+        );
+      } catch (_) {}
+    }
 
     final err = await context.read<AuthService>().login(
           _emailCtrl.text.trim(),
@@ -119,6 +131,26 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (v) =>
                             v == null || v.length < 6 ? 'Min 6 characters' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: _rememberMe,
+                              onChanged: (v) => setState(() => _rememberMe = v ?? true),
+                              activeColor: AppTheme.accent,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => setState(() => _rememberMe = !_rememberMe),
+                            child: const Text('Remember me',
+                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                          ),
+                        ],
                       ),
                       if (_error != null) ...[
                         const SizedBox(height: 12),
