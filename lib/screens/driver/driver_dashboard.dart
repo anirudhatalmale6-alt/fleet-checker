@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../services/data_service.dart';
 import '../../theme/app_theme.dart';
 import 'inspection_flow_screen.dart';
+import 'accident_report_screen.dart';
 import '../shared/inspection_detail_screen.dart';
 
 class DriverDashboard extends StatelessWidget {
@@ -262,6 +263,29 @@ class DriverDashboard extends StatelessWidget {
                                     child: Text(overdue
                                         ? 'Inspect Now!'
                                         : 'Inspect'),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              AccidentReportScreen(van: van),
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppTheme.warning,
+                                        side: BorderSide(
+                                            color: AppTheme.warning
+                                                .withValues(alpha: 0.5)),
+                                      ),
+                                      icon: const Icon(Icons.car_crash, size: 18),
+                                      label: const Text('Report Accident'),
+                                    ),
                                   ),
                                 ),
                               ],

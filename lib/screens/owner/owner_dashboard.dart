@@ -13,6 +13,7 @@ import 'driver_list_screen.dart';
 import 'inspection_list_screen.dart';
 import 'settings_screen.dart';
 import 'subscription_screen.dart';
+import 'accident_report_list_screen.dart';
 
 class OwnerDashboard extends StatefulWidget {
   const OwnerDashboard({super.key});
@@ -350,6 +351,18 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                               MaterialPageRoute(
                                   builder: (_) =>
                                       const InspectionListScreen())),
+                        ),
+                        const SizedBox(height: 12),
+                        _ActionTile(
+                          icon: Icons.car_crash,
+                          title: 'Accident Reports',
+                          subtitle: 'View accident history',
+                          color: AppTheme.warning,
+                          onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const AccidentReportListScreen())),
                         ),
                         const SizedBox(height: 12),
                         _ActionTile(
@@ -826,16 +839,19 @@ class _ActionTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final Color? color;
 
   const _ActionTile({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final c = color ?? AppTheme.accent;
     return Material(
       color: AppTheme.cardBg,
       borderRadius: BorderRadius.circular(12),
@@ -850,10 +866,10 @@ class _ActionTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppTheme.accent.withValues(alpha: 0.15),
+                  color: c.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: AppTheme.accent),
+                child: Icon(icon, color: c),
               ),
               const SizedBox(width: 16),
               Expanded(

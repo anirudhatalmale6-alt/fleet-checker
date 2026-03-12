@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/van_model.dart';
 import '../models/inspection_model.dart';
+import '../models/accident_report_model.dart';
 import 'data_service.dart';
 
 class FirebaseDataService extends DataService {
@@ -174,5 +175,85 @@ class FirebaseDataService extends DataService {
     await _firestore.collection('vans').doc(vanId).update({
       'mileage': mileage,
     });
+  }
+
+  @override
+  Stream<List<AccidentReport>> watchAccidentReportsForOwner(String ownerId) {
+    return _firestore
+        .collection('accident_reports')
+        .where('ownerId', isEqualTo: ownerId)
+        .snapshots()
+        .map((snap) {
+      final list = snap.docs
+          .map((d) => AccidentReport.fromMap(d.data(), d.id))
+          .toList();
+      list.sort((a, b) => b.date.compareTo(a.date));
+      return list;
+    });
+  }
+
+  @override
+  Stream<List<AccidentReport>> watchAccidentReportsForDriver(String driverId) {
+    return _firestore
+        .collection('accident_reports')
+        .where('driverId', isEqualTo: driverId)
+        .snapshots()
+        .map((snap) {
+      final list = snap.docs
+          .map((d) => AccidentReport.fromMap(d.data(), d.id))
+          .toList();
+      list.sort((a, b) => b.date.compareTo(a.date));
+      return list;
+    });
+  }
+
+  @override
+  Future<void> addAccidentReport({
+    required String vanId,
+    required String vanRegistration,
+    required String driverId,
+    required String driverName,
+    required String ownerId,
+    required String location,
+    required String description,
+    required AccidentSeverity severity,
+    List<Uint8List> photoBytes = const [],
+    String? thirdPartyName,
+    String? thirdPartyPhone,
+    String? thirdPartyVehicle,
+    String? thirdPartyInsurance,
+    String? witnessDetails,
+    String? notes,
+  }) async {
+    final photoData = <String>[];
+    for (final bytes in photoBytes) {
+      photoData.add(base64Encode(bytes));
+    }
+
+    await _firestore.collection('accident_reports').add({
+      'vanId': vanId,
+      'vanRegistration': vanRegistration,
+      'driverId': driverId,
+      'driverName': driverName,
+      'ownerId': ownerId,
+      'date': Timestamp.now(),
+      'location': location,
+      'description': description,
+      'severity': severity.name,
+      'status': AccidentStatus.reported.name,
+      'photoUrls': photoData,
+      'thirdPartyName': thirdPartyName,
+      'thirdPartyPhone': thirdPartyPhone,
+      'thirdPartyVehicle': thirdPartyVehicle,
+      'thirdPartyInsurance': thirdPartyInsurance,
+      'witnessDetails': witnessDetails,
+      'notes': notes,
+    });
+  }
+
+  @override
+  Future<void> updateAccidentReport(
+      String reportId, Map<String, dynamic> data) async {
+    await _firestore.collection('accident_reports').doc(reportId).update(data);
   }
 }

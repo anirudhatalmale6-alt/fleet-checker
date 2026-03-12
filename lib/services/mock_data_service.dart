@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 import '../models/van_model.dart';
 import '../models/inspection_model.dart';
+import '../models/accident_report_model.dart';
 import 'data_service.dart';
 
 class MockDataService extends DataService {
@@ -260,10 +261,80 @@ class MockDataService extends DataService {
     _inspectionsController.add(_inspections);
   }
 
+  // Accident Reports
+  final List<AccidentReport> _accidentReports = [];
+  final _accidentReportsController =
+      StreamController<List<AccidentReport>>.broadcast();
+
+  @override
+  Stream<List<AccidentReport>> watchAccidentReportsForOwner(String ownerId) {
+    final getReports = () => _accidentReports
+        .where((r) => r.ownerId == ownerId)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return _streamWithInitial(
+      getReports(),
+      _accidentReportsController.stream.map((_) => getReports()),
+    );
+  }
+
+  @override
+  Stream<List<AccidentReport>> watchAccidentReportsForDriver(String driverId) {
+    final getReports = () => _accidentReports
+        .where((r) => r.driverId == driverId)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return _streamWithInitial(
+      getReports(),
+      _accidentReportsController.stream.map((_) => getReports()),
+    );
+  }
+
+  @override
+  Future<void> addAccidentReport({
+    required String vanId,
+    required String vanRegistration,
+    required String driverId,
+    required String driverName,
+    required String ownerId,
+    required String location,
+    required String description,
+    required AccidentSeverity severity,
+    List<Uint8List> photoBytes = const [],
+    String? thirdPartyName,
+    String? thirdPartyPhone,
+    String? thirdPartyVehicle,
+    String? thirdPartyInsurance,
+    String? witnessDetails,
+    String? notes,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _accidentReports.add(AccidentReport(
+      id: _uuid.v4(),
+      vanId: vanId,
+      vanRegistration: vanRegistration,
+      driverId: driverId,
+      driverName: driverName,
+      ownerId: ownerId,
+      date: DateTime.now(),
+      location: location,
+      description: description,
+      severity: severity,
+    ));
+    _accidentReportsController.add(_accidentReports);
+  }
+
+  @override
+  Future<void> updateAccidentReport(
+      String reportId, Map<String, dynamic> data) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+  }
+
   @override
   void dispose() {
     _vansController.close();
     _inspectionsController.close();
+    _accidentReportsController.close();
     super.dispose();
   }
 }
