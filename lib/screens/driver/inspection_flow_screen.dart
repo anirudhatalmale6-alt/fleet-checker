@@ -67,9 +67,9 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
     try {
       if (source == ImageSource.gallery) {
         final images = await _picker.pickMultiImage(
-          maxWidth: 1200,
-          maxHeight: 1200,
-          imageQuality: 80,
+          maxWidth: 800,
+          maxHeight: 800,
+          imageQuality: 50,
         );
         for (final img in images) {
           final bytes = await img.readAsBytes();
@@ -81,9 +81,9 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
       } else {
         final img = await _picker.pickImage(
           source: source,
-          maxWidth: 1200,
-          maxHeight: 1200,
-          imageQuality: 80,
+          maxWidth: 800,
+          maxHeight: 800,
+          imageQuality: 50,
         );
         if (img != null) {
           final bytes = await img.readAsBytes();
@@ -112,9 +112,9 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
     try {
       if (source == ImageSource.gallery) {
         final images = await _picker.pickMultiImage(
-          maxWidth: 1200,
-          maxHeight: 1200,
-          imageQuality: 80,
+          maxWidth: 800,
+          maxHeight: 800,
+          imageQuality: 50,
         );
         for (final img in images) {
           final bytes = await img.readAsBytes();
@@ -126,9 +126,9 @@ class _InspectionFlowScreenState extends State<InspectionFlowScreen> {
       } else {
         final img = await _picker.pickImage(
           source: source,
-          maxWidth: 1200,
-          maxHeight: 1200,
-          imageQuality: 80,
+          maxWidth: 800,
+          maxHeight: 800,
+          imageQuality: 50,
         );
         if (img != null) {
           final bytes = await img.readAsBytes();

@@ -1,17 +1,15 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../models/van_model.dart';
 import '../models/inspection_model.dart';
 import 'data_service.dart';
 
 class FirebaseDataService extends DataService {
   final FirebaseFirestore _firestore;
-  final FirebaseStorage _storage;
 
-  FirebaseDataService({FirebaseFirestore? firestore, FirebaseStorage? storage})
-      : _firestore = firestore ?? FirebaseFirestore.instance,
-        _storage = storage ?? FirebaseStorage.instance;
+  FirebaseDataService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   @override
   Stream<List<Van>> watchVansForOwner(String ownerId) {
@@ -121,9 +119,6 @@ class FirebaseDataService extends DataService {
     });
   }
 
-  // Storage uploads enabled (requires Firebase Blaze plan + Storage enabled)
-  static const bool _storageEnabled = true;
-
   @override
   Future<void> addInspection({
     required String vanId,
@@ -139,46 +134,26 @@ class FirebaseDataService extends DataService {
     Map<String, List<Uint8List>> itemPhotoBytes = const {},
     Uint8List? signatureBytes,
   }) async {
-    final photoUrls = <String>[];
-    String? signatureUrl;
+    // Store photos as base64 directly in Firestore (no Firebase Storage needed)
+    final photoData = <String>[];
+    for (final bytes in photoBytes) {
+      photoData.add(base64Encode(bytes));
+    }
 
-    // Only attempt uploads when Storage is enabled
-    if (_storageEnabled) {
-      try {
-        for (final bytes in photoBytes) {
-          final ref = _storage.ref(
-              'inspections/$vanId/${DateTime.now().millisecondsSinceEpoch}_${photoUrls.length}.jpg');
-          await ref.putData(
-              bytes, SettableMetadata(contentType: 'image/jpeg'));
-          photoUrls.add(await ref.getDownloadURL());
+    for (final item in checklist) {
+      final itemBytes = itemPhotoBytes[item.name];
+      if (itemBytes != null && itemBytes.isNotEmpty) {
+        final encoded = <String>[];
+        for (final bytes in itemBytes) {
+          encoded.add(base64Encode(bytes));
         }
-
-        for (final item in checklist) {
-          final itemBytes = itemPhotoBytes[item.name];
-          if (itemBytes != null && itemBytes.isNotEmpty) {
-            final urls = <String>[];
-            for (final bytes in itemBytes) {
-              final ref = _storage.ref(
-                  'inspections/$vanId/items/${item.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}_${urls.length}.jpg');
-              await ref.putData(
-                  bytes, SettableMetadata(contentType: 'image/jpeg'));
-              urls.add(await ref.getDownloadURL());
-            }
-            item.photoUrls = urls;
-          }
-        }
-
-        if (signatureBytes != null) {
-          final sigRef = _storage.ref(
-              'inspections/$vanId/signature_${DateTime.now().millisecondsSinceEpoch}.png');
-          await sigRef.putData(
-              signatureBytes, SettableMetadata(contentType: 'image/png'));
-          signatureUrl = await sigRef.getDownloadURL();
-        }
-      } catch (e) {
-        // Log storage error but continue saving inspection without photos
-        print('Firebase Storage upload error: $e');
+        item.photoUrls = encoded;
       }
+    }
+
+    String? signatureData;
+    if (signatureBytes != null) {
+      signatureData = base64Encode(signatureBytes);
     }
 
     await _firestore.collection('inspections').add({
@@ -191,8 +166,8 @@ class FirebaseDataService extends DataService {
       'mileage': mileage,
       'checklist': checklist.map((c) => c.toMap()).toList(),
       'generalNotes': generalNotes,
-      'photoUrls': photoUrls,
-      'signatureUrl': signatureUrl,
+      'photoUrls': photoData,
+      'signatureUrl': signatureData,
       'status': status.name,
     });
 

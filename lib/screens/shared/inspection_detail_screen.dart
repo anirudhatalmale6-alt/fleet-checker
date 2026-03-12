@@ -1,9 +1,61 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../../models/inspection_model.dart';
 import '../../services/pdf_report_service.dart';
 import '../../theme/app_theme.dart';
+
+/// Returns an Image widget that handles both URLs and base64 strings.
+Widget buildPhotoImage(String data, {BoxFit fit = BoxFit.cover, double? width, double? height, Widget Function(BuildContext, Object, StackTrace?)? errorBuilder}) {
+  if (data.startsWith('http')) {
+    return Image.network(
+      data,
+      fit: fit,
+      width: width,
+      height: height,
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return Container(
+          width: width,
+          height: height,
+          color: AppTheme.cardBg,
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        );
+      },
+      errorBuilder: errorBuilder ?? (_, __, ___) => Container(
+        width: width,
+        height: height,
+        color: AppTheme.cardBg,
+        child: const Center(child: Icon(Icons.broken_image, color: AppTheme.textSecondary)),
+      ),
+    );
+  } else {
+    try {
+      final bytes = base64Decode(data);
+      return Image.memory(
+        Uint8List.fromList(bytes),
+        fit: fit,
+        width: width,
+        height: height,
+        errorBuilder: errorBuilder ?? (_, __, ___) => Container(
+          width: width,
+          height: height,
+          color: AppTheme.cardBg,
+          child: const Center(child: Icon(Icons.broken_image, color: AppTheme.textSecondary)),
+        ),
+      );
+    } catch (_) {
+      return Container(
+        width: width,
+        height: height,
+        color: AppTheme.cardBg,
+        child: const Center(child: Icon(Icons.broken_image, color: AppTheme.textSecondary)),
+      );
+    }
+  }
+}
 
 class InspectionDetailScreen extends StatelessWidget {
   final Inspection inspection;
@@ -138,7 +190,7 @@ class InspectionDetailScreen extends StatelessWidget {
                                             context, item.photoUrls, index),
                                         child: ClipRRect(
                                           borderRadius: BorderRadius.circular(6),
-                                          child: Image.network(
+                                          child: buildPhotoImage(
                                             item.photoUrls[index],
                                             width: 60,
                                             height: 60,
@@ -199,27 +251,9 @@ class InspectionDetailScreen extends StatelessWidget {
                     onTap: () => _showFullPhoto(context, inspection.photoUrls, index),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
+                      child: buildPhotoImage(
                         inspection.photoUrls[index],
                         fit: BoxFit.cover,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return Container(
-                            color: AppTheme.cardBg,
-                            child: const Center(
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stack) {
-                          return Container(
-                            color: AppTheme.cardBg,
-                            child: const Center(
-                              child: Icon(Icons.broken_image,
-                                  color: AppTheme.textSecondary),
-                            ),
-                          );
-                        },
                       ),
                     ),
                   );
@@ -243,7 +277,7 @@ class InspectionDetailScreen extends StatelessWidget {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Image.network(
+                child: buildPhotoImage(
                   inspection.signatureUrl!,
                   height: 120,
                   fit: BoxFit.contain,
@@ -437,15 +471,9 @@ class _PhotoViewerState extends State<_PhotoViewer> {
         itemBuilder: (context, index) {
           return InteractiveViewer(
             child: Center(
-              child: Image.network(
+              child: buildPhotoImage(
                 widget.urls[index],
                 fit: BoxFit.contain,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  );
-                },
               ),
             ),
           );
