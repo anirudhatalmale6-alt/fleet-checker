@@ -22,6 +22,55 @@ class SubscriptionScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Free trial banner
+                      if (!sub.ownerSubscribed && sub.activeVanPlan == null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppTheme.accent.withValues(alpha: 0.2),
+                                AppTheme.accentLight.withValues(alpha: 0.15),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppTheme.accent.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.celebration, color: AppTheme.accent, size: 28),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '2 Weeks Free Trial!',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Try Fleet Checker free for 14 days. Cancel anytime.',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       // Current status
                       _StatusBanner(sub: sub),
                       const SizedBox(height: 28),
@@ -257,14 +306,16 @@ class _OwnerPlanCard extends StatelessWidget {
           const _FeatureRow(text: 'PDF report generation'),
           const _FeatureRow(text: 'Push notifications for inspections'),
           if (!isActive) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            const _FeatureRow(text: '2-week free trial included'),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: product == null
                     ? null
                     : () => _purchase(context, sub),
-                child: const Text('Subscribe'),
+                child: const Text('Start Free Trial'),
               ),
             ),
           ],
@@ -354,6 +405,15 @@ class _VanPlanCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (!isActive)
+                  const Text(
+                    '2 weeks free',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.success,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
               ],
             ),
           ),
