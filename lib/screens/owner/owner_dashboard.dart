@@ -548,13 +548,17 @@ List<Widget> _buildInspectionSummary(
     const SizedBox(height: 16),
 
     // Status cards grid (like DAVIS Fleet)
-    Row(
+    Builder(builder: (context) => Row(
       children: [
         _SummaryCard(
           icon: Icons.check_circle,
           label: 'Passed',
           count: passed,
           color: AppTheme.success,
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const InspectionListScreen(
+              initialFilter: InspectionFilter.passed),
+          )),
         ),
         const SizedBox(width: 10),
         _SummaryCard(
@@ -562,6 +566,10 @@ List<Widget> _buildInspectionSummary(
           label: 'Failed',
           count: failed,
           color: AppTheme.danger,
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const InspectionListScreen(
+              initialFilter: InspectionFilter.failed),
+          )),
         ),
         const SizedBox(width: 10),
         _SummaryCard(
@@ -571,7 +579,7 @@ List<Widget> _buildInspectionSummary(
           color: AppTheme.warning,
         ),
       ],
-    ),
+    )),
     const SizedBox(height: 20),
 
     // Progress bars with percentages
@@ -663,53 +671,58 @@ class _SummaryCard extends StatelessWidget {
   final String label;
   final int count;
   final Color color;
+  final VoidCallback? onTap;
 
   const _SummaryCard({
     required this.icon,
     required this.label,
     required this.count,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: color,
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$count',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: color,
+              const SizedBox(height: 4),
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
