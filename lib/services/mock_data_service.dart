@@ -208,6 +208,19 @@ class MockDataService extends DataService {
   }
 
   @override
+  Stream<List<Inspection>> watchInspectionsForVan(String vanId) {
+    final getInspections = () => _inspections
+        .where((i) => i.vanId == vanId)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    return _streamWithInitial(
+      getInspections(),
+      _inspectionsController.stream.map((_) => getInspections()),
+    );
+  }
+
+  @override
   Stream<List<Inspection>> watchInspectionsForDriver(String driverId) {
     final getInspections = () => _inspections
         .where((i) => i.driverId == driverId)

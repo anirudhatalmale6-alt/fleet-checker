@@ -30,6 +30,7 @@ abstract class DataService extends ChangeNotifier {
 
   Stream<List<Inspection>> watchInspectionsForOwner(String ownerId);
   Stream<List<Inspection>> watchInspectionsForDriver(String driverId);
+  Stream<List<Inspection>> watchInspectionsForVan(String vanId);
 
   Future<void> addInspection({
     required String vanId,

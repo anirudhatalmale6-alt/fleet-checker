@@ -7,6 +7,7 @@ import '../../services/subscription_service.dart';
 import '../../theme/app_theme.dart';
 import 'add_van_screen.dart';
 import 'subscription_screen.dart';
+import 'van_inspection_history_screen.dart';
 
 class VanListScreen extends StatelessWidget {
   const VanListScreen({super.key});
@@ -65,7 +66,14 @@ class VanListScreen extends StatelessWidget {
               final van = vans[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
+                child: InkWell(
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              VanInspectionHistoryScreen(van: van))),
+                  borderRadius: BorderRadius.circular(12),
+                  child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
                   leading: Container(
                     width: 50,
@@ -122,6 +130,9 @@ class VanListScreen extends StatelessWidget {
                   trailing: PopupMenuButton(
                     itemBuilder: (_) => [
                       const PopupMenuItem(
+                          value: 'history',
+                          child: Text('Inspection History')),
+                      const PopupMenuItem(
                           value: 'edit', child: Text('Edit')),
                       const PopupMenuItem(
                           value: 'delete',
@@ -129,7 +140,13 @@ class VanListScreen extends StatelessWidget {
                               style: TextStyle(color: AppTheme.danger))),
                     ],
                     onSelected: (value) {
-                      if (value == 'edit') {
+                      if (value == 'history') {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    VanInspectionHistoryScreen(van: van)));
+                      } else if (value == 'edit') {
                         Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -161,6 +178,7 @@ class VanListScreen extends StatelessWidget {
                     },
                   ),
                 ),
+              ),
               );
             },
           );

@@ -121,6 +121,21 @@ class FirebaseDataService extends DataService {
   }
 
   @override
+  Stream<List<Inspection>> watchInspectionsForVan(String vanId) {
+    return _firestore
+        .collection('inspections')
+        .where('vanId', isEqualTo: vanId)
+        .snapshots()
+        .map((snap) {
+      final list = snap.docs
+          .map((d) => Inspection.fromMap(d.data(), d.id))
+          .toList();
+      list.sort((a, b) => b.date.compareTo(a.date));
+      return list;
+    });
+  }
+
+  @override
   Future<void> addInspection({
     required String vanId,
     required String vanRegistration,
