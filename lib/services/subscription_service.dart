@@ -5,12 +5,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SubscriptionService extends ChangeNotifier {
   static const String ownerMonthlyId = 'owner_monthly';
-  static const String vansWeeklyId = 'vans_1_weekly';
 
-  static const Set<String> _productIds = {
-    ownerMonthlyId,
-    vansWeeklyId,
+  // Van tier product IDs — note: 3, 5, 10 use no underscore (Apple reuse restriction)
+  static const Map<int, String> vanTierProducts = {
+    1: 'vans_1_weekly',
+    2: 'vans_2_weekly',
+    3: 'vans3_weekly',
+    4: 'vans_4_weekly',
+    5: 'vans5_weekly',
+    6: 'vans_6_weekly',
+    7: 'vans_7_weekly',
+    8: 'vans_8_weekly',
+    9: 'vans_9_weekly',
+    10: 'vans10_weekly',
+    15: 'vans_15_weekly',
+    20: 'vans_20_weekly',
   };
+
+  // Sorted tier counts for upgrade/downgrade lookups
+  static final List<int> _sortedTiers = vanTierProducts.keys.toList()..sort();
+
+  static Set<String> get _productIds => {
+        ownerMonthlyId,
+        ...vanTierProducts.values,
+      };
 
   final InAppPurchase _iap = InAppPurchase.instance;
   final FirebaseFirestore _firestore;
@@ -19,7 +37,7 @@ class SubscriptionService extends ChangeNotifier {
   List<ProductDetails> _products = [];
   bool _isAvailable = false;
   bool _ownerSubscribed = false;
-  bool _vanSubscribed = false;
+  String? _activeVanProductId;
   bool _loading = true;
   String? _userId;
 
@@ -27,14 +45,40 @@ class SubscriptionService extends ChangeNotifier {
   List<ProductDetails> get products => _products;
   bool get isAvailable => _isAvailable;
   bool get ownerSubscribed => _ownerSubscribed;
-  bool get vanSubscribed => _vanSubscribed;
   bool get loading => _loading;
+
+  /// Current van limit based on active tier (0 if no van subscription)
+  int get vanLimit {
+    if (_activeVanProductId == null) return 0;
+    for (final entry in vanTierProducts.entries) {
+      if (entry.value == _activeVanProductId) return entry.key;
+    }
+    return 0;
+  }
+
+  /// Whether the user has any van subscription
+  bool get vanSubscribed => _activeVanProductId != null;
+
+  /// The active van tier product ID
+  String? get activeVanProductId => _activeVanProductId;
 
   ProductDetails? get ownerProduct =>
       _products.where((p) => p.id == ownerMonthlyId).firstOrNull;
 
-  ProductDetails? get vanProduct =>
-      _products.where((p) => p.id == vansWeeklyId).firstOrNull;
+  /// Get ProductDetails for a specific van tier
+  ProductDetails? vanProductForTier(int tierCount) {
+    final productId = vanTierProducts[tierCount];
+    if (productId == null) return null;
+    return _products.where((p) => p.id == productId).firstOrNull;
+  }
+
+  /// Find the right tier for a given van count
+  static int tierForVanCount(int vanCount) {
+    for (final tier in _sortedTiers) {
+      if (tier >= vanCount) return tier;
+    }
+    return _sortedTiers.last; // max tier
+  }
 
   SubscriptionService({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -74,7 +118,7 @@ class SubscriptionService extends ChangeNotifier {
     if (doc.exists) {
       final data = doc.data()!;
       _ownerSubscribed = data['ownerSubscribed'] == true;
-      _vanSubscribed = data['vanSubscribed'] == true;
+      _activeVanProductId = data['activeVanProductId'];
     }
     notifyListeners();
   }
@@ -84,7 +128,8 @@ class SubscriptionService extends ChangeNotifier {
 
     await _firestore.collection('subscriptions').doc(_userId).set({
       'ownerSubscribed': _ownerSubscribed,
-      'vanSubscribed': _vanSubscribed,
+      'activeVanProductId': _activeVanProductId,
+      'vanLimit': vanLimit,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -102,11 +147,10 @@ class SubscriptionService extends ChangeNotifier {
   }
 
   Future<void> _verifyAndDeliver(PurchaseDetails purchase) async {
-    // For StoreKit 2, transactions are verified on-device
     if (purchase.productID == ownerMonthlyId) {
       _ownerSubscribed = true;
-    } else if (purchase.productID == vansWeeklyId) {
-      _vanSubscribed = true;
+    } else if (vanTierProducts.values.contains(purchase.productID)) {
+      _activeVanProductId = purchase.productID;
     }
 
     await _saveSubscriptionStatus();
@@ -126,8 +170,12 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
-  Future<bool> purchaseVanPlan() async {
-    final product = vanProduct;
+  /// Purchase or upgrade to a specific van tier
+  Future<bool> purchaseVanTier(int tierCount) async {
+    final productId = vanTierProducts[tierCount];
+    if (productId == null) return false;
+
+    final product = _products.where((p) => p.id == productId).firstOrNull;
     if (product == null) return false;
 
     try {
@@ -139,12 +187,27 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
-  Future<void> restorePurchases() async {
-    await _iap.restorePurchases();
+  /// Check if the user can add a van (has room in current tier)
+  bool canAddVan(int currentVanCount) {
+    if (!_ownerSubscribed) return false;
+    if (!vanSubscribed) return false;
+    return currentVanCount < vanLimit;
   }
 
-  bool canAddVan() {
-    return _ownerSubscribed && _vanSubscribed;
+  /// Check if adding a van requires a tier upgrade
+  bool needsUpgrade(int currentVanCount) {
+    if (!vanSubscribed) return true;
+    return currentVanCount >= vanLimit;
+  }
+
+  /// Get the next tier needed if the user wants to add a van
+  int? nextTierForAddingVan(int currentVanCount) {
+    final needed = currentVanCount + 1;
+    return tierForVanCount(needed);
+  }
+
+  Future<void> restorePurchases() async {
+    await _iap.restorePurchases();
   }
 
   @override

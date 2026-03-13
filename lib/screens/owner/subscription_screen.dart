@@ -42,7 +42,8 @@ class SubscriptionScreen extends StatelessWidget {
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.celebration, color: AppTheme.accent, size: 28),
+                              Icon(Icons.celebration,
+                                  color: AppTheme.accent, size: 28),
                               SizedBox(width: 12),
                               Expanded(
                                 child: Column(
@@ -88,9 +89,9 @@ class SubscriptionScreen extends StatelessWidget {
                       _OwnerPlanCard(sub: sub),
                       const SizedBox(height: 28),
 
-                      // Van plan
+                      // Van pricing info
                       const Text(
-                        'Van Plan',
+                        'Van Pricing',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -98,7 +99,7 @@ class SubscriptionScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _VanPlanCard(sub: sub),
+                      _VanPricingCard(sub: sub),
 
                       const SizedBox(height: 20),
 
@@ -110,8 +111,7 @@ class SubscriptionScreen extends StatelessWidget {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content:
-                                        Text('Purchases restored')),
+                                    content: Text('Purchases restored')),
                               );
                             }
                           },
@@ -145,8 +145,7 @@ class _StatusBanner extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.warning.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
-          border:
-              Border.all(color: AppTheme.warning.withValues(alpha: 0.3)),
+          border: Border.all(color: AppTheme.warning.withValues(alpha: 0.3)),
         ),
         child: const Row(
           children: [
@@ -169,21 +168,35 @@ class _StatusBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.success.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.check_circle, color: AppTheme.success),
-          const SizedBox(width: 12),
-          Text(
-            hasOwner && hasVans ? 'Fully Subscribed' : 'Partial Subscription',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: AppTheme.textPrimary,
-            ),
+          Row(
+            children: [
+              const Icon(Icons.check_circle, color: AppTheme.success),
+              const SizedBox(width: 12),
+              Text(
+                hasOwner && hasVans
+                    ? 'Fully Subscribed'
+                    : 'Partial Subscription',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
           ),
+          if (hasVans) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Current plan: ${sub.vanLimit} van${sub.vanLimit == 1 ? '' : 's'} '
+              '(£${(sub.vanLimit * 0.99).toStringAsFixed(2)}/week)',
+              style: const TextStyle(color: AppTheme.textSecondary),
+            ),
+          ],
         ],
       ),
     );
@@ -226,7 +239,8 @@ class _OwnerPlanCard extends StatelessWidget {
                   color: AppTheme.accent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.person, color: AppTheme.accent, size: 28),
+                child:
+                    const Icon(Icons.person, color: AppTheme.accent, size: 28),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -242,7 +256,9 @@ class _OwnerPlanCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      product != null ? '${product.price}/month' : '£3.99/month',
+                      product != null
+                          ? '${product.price}/month'
+                          : '£4.99/month',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppTheme.accentLight,
@@ -278,15 +294,13 @@ class _OwnerPlanCard extends StatelessWidget {
           const _FeatureRow(text: 'PDF report generation'),
           const _FeatureRow(text: 'Push notifications for inspections'),
           if (!isActive) ...[
-            const SizedBox(height: 12),
             const _FeatureRow(text: '2-week free trial included'),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: product == null
-                    ? null
-                    : () => _purchase(context, sub),
+                onPressed:
+                    product == null ? null : () => _purchase(context, sub),
                 child: const Text('Start Free Trial'),
               ),
             ),
@@ -296,7 +310,8 @@ class _OwnerPlanCard extends StatelessWidget {
     );
   }
 
-  Future<void> _purchase(BuildContext context, SubscriptionService sub) async {
+  Future<void> _purchase(
+      BuildContext context, SubscriptionService sub) async {
     final success = await sub.purchaseOwnerSubscription();
     if (!success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -306,13 +321,12 @@ class _OwnerPlanCard extends StatelessWidget {
   }
 }
 
-class _VanPlanCard extends StatelessWidget {
+class _VanPricingCard extends StatelessWidget {
   final SubscriptionService sub;
-  const _VanPlanCard({required this.sub});
+  const _VanPricingCard({required this.sub});
 
   @override
   Widget build(BuildContext context) {
-    final product = sub.vanProduct;
     final isActive = sub.vanSubscribed;
 
     return Container(
@@ -346,12 +360,12 @@ class _VanPlanCard extends StatelessWidget {
                     color: AppTheme.accent, size: 28),
               ),
               const SizedBox(width: 14),
-              Expanded(
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Unlimited Vans',
+                    Text(
+                      '£0.99 per van / week',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -359,51 +373,60 @@ class _VanPlanCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      product != null
-                          ? '${product.price}/week'
-                          : '£0.99/week',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.accentLight,
-                        fontWeight: FontWeight.w600,
+                      'Pay only for the vans you need',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              if (isActive)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accent,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'ACTIVE',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
             ],
           ),
           const SizedBox(height: 16),
-          const _FeatureRow(text: 'Add unlimited vehicles to your fleet'),
-          const _FeatureRow(text: 'Daily inspection tracking per vehicle'),
-          const _FeatureRow(text: 'Assign drivers to any vehicle'),
-          if (!isActive) ...[
+          if (isActive) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.success.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle,
+                      color: AppTheme.success, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Current plan: ${sub.vanLimit} van${sub.vanLimit == 1 ? '' : 's'} '
+                      '(£${(sub.vanLimit * 0.99).toStringAsFixed(2)}/week)',
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Your plan automatically adjusts when you add vehicles.',
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            ),
+          ] else ...[
+            const _FeatureRow(text: 'Add vehicles one at a time'),
+            const _FeatureRow(text: 'Plan auto-upgrades as you add vans'),
+            const _FeatureRow(text: 'Daily inspection tracking per vehicle'),
             const _FeatureRow(text: '2-week free trial included'),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: product == null
-                    ? null
-                    : () => _purchase(context, sub),
-                child: const Text('Start Free Trial'),
+                onPressed: () => _purchaseFirstVan(context, sub),
+                child: const Text('Start Free Trial — 1 Van'),
               ),
             ),
           ],
@@ -412,8 +435,9 @@ class _VanPlanCard extends StatelessWidget {
     );
   }
 
-  Future<void> _purchase(BuildContext context, SubscriptionService sub) async {
-    final success = await sub.purchaseVanPlan();
+  Future<void> _purchaseFirstVan(
+      BuildContext context, SubscriptionService sub) async {
+    final success = await sub.purchaseVanTier(1);
     if (!success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Purchase could not be completed')),

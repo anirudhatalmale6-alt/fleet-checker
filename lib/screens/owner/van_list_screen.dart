@@ -18,22 +18,16 @@ class VanListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Vehicles')),
-      floatingActionButton: Builder(
-        builder: (context) {
+      floatingActionButton: StreamBuilder<List<Van>>(
+        stream: data.watchVansForOwner(auth.currentUser!.id),
+        builder: (context, vanSnap) {
+          final vans = vanSnap.data ?? [];
           final sub = context.watch<SubscriptionService>();
-          final canAdd = sub.canAddVan();
+
           return FloatingActionButton.extended(
-            onPressed: () {
-              if (!canAdd) {
-                _showUpgradeDialog(context, sub);
-                return;
-              }
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const AddVanScreen()));
-            },
+            onPressed: () => _handleAddVan(context, sub, vans.length),
             icon: const Icon(Icons.add),
             label: const Text('Add Vehicle'),
-            backgroundColor: canAdd ? AppTheme.accent : AppTheme.textSecondary,
           );
         },
       ),
@@ -157,8 +151,8 @@ class VanListScreen extends StatelessWidget {
                                   Navigator.pop(ctx);
                                 },
                                 child: const Text('Delete',
-                                    style: TextStyle(
-                                        color: AppTheme.danger)),
+                                    style:
+                                        TextStyle(color: AppTheme.danger)),
                               ),
                             ],
                           ),
@@ -175,14 +169,77 @@ class VanListScreen extends StatelessWidget {
     );
   }
 
-  void _showUpgradeDialog(BuildContext context, SubscriptionService sub) {
-    String message;
+  void _handleAddVan(
+      BuildContext context, SubscriptionService sub, int currentVans) {
+    // Not subscribed at all — go to subscription page
     if (!sub.ownerSubscribed) {
-      message = 'You need an active Owner subscription to add vehicles.';
-    } else {
-      message = 'You need a Van subscription to add vehicles.';
+      _showSubscriptionDialog(
+        context,
+        'You need an active Owner subscription to add vehicles.',
+      );
+      return;
     }
 
+    // No van subscription yet — go to subscription page
+    if (!sub.vanSubscribed) {
+      _showSubscriptionDialog(
+        context,
+        'You need a Van subscription to add vehicles. It\'s just £0.99 per van per week.',
+      );
+      return;
+    }
+
+    // Has room in current tier — add directly
+    if (currentVans < sub.vanLimit) {
+      Navigator.push(
+          context, MaterialPageRoute(builder: (_) => const AddVanScreen()));
+      return;
+    }
+
+    // Needs upgrade — show upgrade dialog
+    final nextTier = sub.nextTierForAddingVan(currentVans);
+    if (nextTier == null) {
+      _showSubscriptionDialog(
+        context,
+        'You\'ve reached the maximum van limit. Please contact support for larger fleets.',
+      );
+      return;
+    }
+
+    final newWeeklyCost = (nextTier * 0.99).toStringAsFixed(2);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: const Text('Upgrade Van Plan'),
+        content: Text(
+          'Adding another van will upgrade your weekly plan from '
+          '${sub.vanLimit} van${sub.vanLimit == 1 ? '' : 's'} to $nextTier van${nextTier == 1 ? '' : 's'} '
+          '(£$newWeeklyCost/week).\n\n'
+          'That\'s £0.99 per van per week.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final success = await sub.purchaseVanTier(nextTier);
+              if (success && context.mounted) {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const AddVanScreen()));
+              }
+            },
+            child: const Text('Upgrade & Add Van'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSubscriptionDialog(BuildContext context, String message) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -197,8 +254,10 @@ class VanListScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const SubscriptionScreen()));
             },
             child: const Text('View Plans'),
           ),
