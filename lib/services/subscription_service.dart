@@ -5,27 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SubscriptionService extends ChangeNotifier {
   static const String ownerMonthlyId = 'owner_monthly';
-  static const String vans1WeeklyId = 'vans_1_weekly';
-  static const String vans3WeeklyId = 'vans_3_weekly';
-  static const String vans5WeeklyId = 'vans_5_weekly';
-  static const String vans10WeeklyId = 'vans_10_weekly';
-  static const String vans25WeeklyId = 'vans_25_weekly';
+  static const String vansWeeklyId = 'vans_1_weekly';
 
   static const Set<String> _productIds = {
     ownerMonthlyId,
-    vans1WeeklyId,
-    vans3WeeklyId,
-    vans5WeeklyId,
-    vans10WeeklyId,
-    vans25WeeklyId,
-  };
-
-  static const Map<String, int> vanLimits = {
-    vans1WeeklyId: 1,
-    vans3WeeklyId: 3,
-    vans5WeeklyId: 5,
-    vans10WeeklyId: 10,
-    vans25WeeklyId: 25,
+    vansWeeklyId,
   };
 
   final InAppPurchase _iap = InAppPurchase.instance;
@@ -35,8 +19,7 @@ class SubscriptionService extends ChangeNotifier {
   List<ProductDetails> _products = [];
   bool _isAvailable = false;
   bool _ownerSubscribed = false;
-  String? _activeVanPlan;
-  int _vanLimit = 0;
+  bool _vanSubscribed = false;
   bool _loading = true;
   String? _userId;
 
@@ -44,16 +27,14 @@ class SubscriptionService extends ChangeNotifier {
   List<ProductDetails> get products => _products;
   bool get isAvailable => _isAvailable;
   bool get ownerSubscribed => _ownerSubscribed;
-  String? get activeVanPlan => _activeVanPlan;
-  int get vanLimit => _vanLimit;
+  bool get vanSubscribed => _vanSubscribed;
   bool get loading => _loading;
 
   ProductDetails? get ownerProduct =>
       _products.where((p) => p.id == ownerMonthlyId).firstOrNull;
 
-  List<ProductDetails> get vanProducts =>
-      _products.where((p) => p.id != ownerMonthlyId).toList()
-        ..sort((a, b) => a.rawPrice.compareTo(b.rawPrice));
+  ProductDetails? get vanProduct =>
+      _products.where((p) => p.id == vansWeeklyId).firstOrNull;
 
   SubscriptionService({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -93,8 +74,7 @@ class SubscriptionService extends ChangeNotifier {
     if (doc.exists) {
       final data = doc.data()!;
       _ownerSubscribed = data['ownerSubscribed'] == true;
-      _activeVanPlan = data['activeVanPlan'];
-      _vanLimit = data['vanLimit'] ?? 0;
+      _vanSubscribed = data['vanSubscribed'] == true;
     }
     notifyListeners();
   }
@@ -104,8 +84,7 @@ class SubscriptionService extends ChangeNotifier {
 
     await _firestore.collection('subscriptions').doc(_userId).set({
       'ownerSubscribed': _ownerSubscribed,
-      'activeVanPlan': _activeVanPlan,
-      'vanLimit': _vanLimit,
+      'vanSubscribed': _vanSubscribed,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -126,9 +105,8 @@ class SubscriptionService extends ChangeNotifier {
     // For StoreKit 2, transactions are verified on-device
     if (purchase.productID == ownerMonthlyId) {
       _ownerSubscribed = true;
-    } else if (vanLimits.containsKey(purchase.productID)) {
-      _activeVanPlan = purchase.productID;
-      _vanLimit = vanLimits[purchase.productID]!;
+    } else if (purchase.productID == vansWeeklyId) {
+      _vanSubscribed = true;
     }
 
     await _saveSubscriptionStatus();
@@ -148,8 +126,8 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
-  Future<bool> purchaseVanPlan(String productId) async {
-    final product = _products.where((p) => p.id == productId).firstOrNull;
+  Future<bool> purchaseVanPlan() async {
+    final product = vanProduct;
     if (product == null) return false;
 
     try {
@@ -165,10 +143,8 @@ class SubscriptionService extends ChangeNotifier {
     await _iap.restorePurchases();
   }
 
-  bool canAddVan(int currentVanCount) {
-    if (!_ownerSubscribed) return false;
-    if (_vanLimit == 0) return false;
-    return currentVanCount < _vanLimit;
+  bool canAddVan() {
+    return _ownerSubscribed && _vanSubscribed;
   }
 
   @override

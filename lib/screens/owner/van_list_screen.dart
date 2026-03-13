@@ -18,16 +18,14 @@ class VanListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Vehicles')),
-      floatingActionButton: StreamBuilder<List<Van>>(
-        stream: data.watchVansForOwner(auth.currentUser!.id),
-        builder: (context, vanSnap) {
-          final vans = vanSnap.data ?? [];
+      floatingActionButton: Builder(
+        builder: (context) {
           final sub = context.watch<SubscriptionService>();
-          final canAdd = sub.canAddVan(vans.length);
+          final canAdd = sub.canAddVan();
           return FloatingActionButton.extended(
             onPressed: () {
-              if (!sub.ownerSubscribed || !canAdd) {
-                _showUpgradeDialog(context, sub, vans.length);
+              if (!canAdd) {
+                _showUpgradeDialog(context, sub);
                 return;
               }
               Navigator.push(context,
@@ -177,16 +175,12 @@ class VanListScreen extends StatelessWidget {
     );
   }
 
-  void _showUpgradeDialog(
-      BuildContext context, SubscriptionService sub, int currentVans) {
+  void _showUpgradeDialog(BuildContext context, SubscriptionService sub) {
     String message;
     if (!sub.ownerSubscribed) {
       message = 'You need an active Owner subscription to add vehicles.';
-    } else if (sub.vanLimit == 0) {
-      message = 'You need a Van plan to add vehicles.';
     } else {
-      message =
-          'You\'ve reached your limit of ${sub.vanLimit} vans. Upgrade your plan to add more.';
+      message = 'You need a Van subscription to add vehicles.';
     }
 
     showDialog(

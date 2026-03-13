@@ -23,7 +23,7 @@ class SubscriptionScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Free trial banner
-                      if (!sub.ownerSubscribed && sub.activeVanPlan == null)
+                      if (!sub.ownerSubscribed && !sub.vanSubscribed)
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
@@ -88,33 +88,17 @@ class SubscriptionScreen extends StatelessWidget {
                       _OwnerPlanCard(sub: sub),
                       const SizedBox(height: 28),
 
-                      // Van plans
+                      // Van plan
                       const Text(
-                        'Van Plans',
+                        'Van Plan',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Choose how many vans you need',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
                       const SizedBox(height: 12),
-                      ...sub.vanProducts.map((product) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _VanPlanCard(
-                              product: product,
-                              isActive:
-                                  sub.activeVanPlan == product.id,
-                              sub: sub,
-                            ),
-                          )),
+                      _VanPlanCard(sub: sub),
 
                       const SizedBox(height: 20),
 
@@ -152,7 +136,7 @@ class _StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasOwner = sub.ownerSubscribed;
-    final hasVans = sub.activeVanPlan != null;
+    final hasVans = sub.vanSubscribed;
 
     if (!hasOwner && !hasVans) {
       return Container(
@@ -188,30 +172,18 @@ class _StatusBanner extends StatelessWidget {
         border:
             Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.check_circle, color: AppTheme.success),
-              const SizedBox(width: 12),
-              Text(
-                hasOwner ? 'Active Subscription' : 'Partial Subscription',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          if (hasVans) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Van limit: ${sub.vanLimit} vans',
-              style: const TextStyle(color: AppTheme.textSecondary),
+          const Icon(Icons.check_circle, color: AppTheme.success),
+          const SizedBox(width: 12),
+          Text(
+            hasOwner && hasVans ? 'Fully Subscribed' : 'Partial Subscription',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: AppTheme.textPrimary,
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -335,23 +307,17 @@ class _OwnerPlanCard extends StatelessWidget {
 }
 
 class _VanPlanCard extends StatelessWidget {
-  final dynamic product; // ProductDetails
-  final bool isActive;
   final SubscriptionService sub;
-
-  const _VanPlanCard({
-    required this.product,
-    required this.isActive,
-    required this.sub,
-  });
+  const _VanPlanCard({required this.sub});
 
   @override
   Widget build(BuildContext context) {
-    final vanCount = SubscriptionService.vanLimits[product.id] ?? 0;
+    final product = sub.vanProduct;
+    final isActive = sub.vanSubscribed;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isActive
             ? AppTheme.accent.withValues(alpha: 0.1)
@@ -364,92 +330,90 @@ class _VanPlanCard extends StatelessWidget {
           width: isActive ? 2 : 1,
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppTheme.accent.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text(
-                '$vanCount',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.accent,
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.local_shipping,
+                    color: AppTheme.accent, size: 28),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Unlimited Vans',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      product != null
+                          ? '${product.price}/week'
+                          : '£0.99/week',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.accentLight,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$vanCount Vans',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+              if (isActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accent,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ),
-                Text(
-                  '${product.price}/week',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.accentLight,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (!isActive)
-                  const Text(
-                    '2 weeks free',
+                  child: const Text(
+                    'ACTIVE',
                     style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                       fontSize: 12,
-                      color: AppTheme.success,
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
-              ],
-            ),
-          ),
-          if (isActive)
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.accent,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'CURRENT',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
                 ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const _FeatureRow(text: 'Add unlimited vehicles to your fleet'),
+          const _FeatureRow(text: 'Daily inspection tracking per vehicle'),
+          const _FeatureRow(text: 'Assign drivers to any vehicle'),
+          if (!isActive) ...[
+            const _FeatureRow(text: '2-week free trial included'),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: product == null
+                    ? null
+                    : () => _purchase(context, sub),
+                child: const Text('Start Free Trial'),
               ),
-            )
-          else
-            ElevatedButton(
-              onPressed: () => _purchase(context),
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              ),
-              child: const Text('Select'),
             ),
+          ],
         ],
       ),
     );
   }
 
-  Future<void> _purchase(BuildContext context) async {
-    final success = await sub.purchaseVanPlan(product.id);
+  Future<void> _purchase(BuildContext context, SubscriptionService sub) async {
+    final success = await sub.purchaseVanPlan();
     if (!success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Purchase could not be completed')),
