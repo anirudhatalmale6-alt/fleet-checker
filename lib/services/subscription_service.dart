@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SubscriptionService extends ChangeNotifier {
   static const String ownerMonthlyId = 'owner_monthly';
+  static const String vans1WeeklyId = 'vans_1_weekly';
   static const String vans3WeeklyId = 'vans_3_weekly';
   static const String vans5WeeklyId = 'vans_5_weekly';
   static const String vans10WeeklyId = 'vans_10_weekly';
@@ -12,6 +13,7 @@ class SubscriptionService extends ChangeNotifier {
 
   static const Set<String> _productIds = {
     ownerMonthlyId,
+    vans1WeeklyId,
     vans3WeeklyId,
     vans5WeeklyId,
     vans10WeeklyId,
@@ -19,6 +21,7 @@ class SubscriptionService extends ChangeNotifier {
   };
 
   static const Map<String, int> vanLimits = {
+    vans1WeeklyId: 1,
     vans3WeeklyId: 3,
     vans5WeeklyId: 5,
     vans10WeeklyId: 10,
