@@ -255,11 +255,9 @@ class _OwnerPlanCard extends StatelessWidget {
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    Text(
-                      product != null
-                          ? '${product.price}/month'
-                          : '£4.99/month',
-                      style: const TextStyle(
+                    const Text(
+                      '£3.99/month',
+                      style: TextStyle(
                         fontSize: 14,
                         color: AppTheme.accentLight,
                         fontWeight: FontWeight.w600,
