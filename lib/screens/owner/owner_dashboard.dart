@@ -14,6 +14,7 @@ import 'inspection_list_screen.dart';
 import 'settings_screen.dart';
 import 'subscription_screen.dart';
 import 'accident_report_list_screen.dart';
+import 'van_inspection_history_screen.dart';
 
 class OwnerDashboard extends StatefulWidget {
   const OwnerDashboard({super.key});
@@ -296,6 +297,10 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                               label: 'Today',
                               value: '${todayInspections.length}',
                               color: AppTheme.success,
+                              onTap: () => Navigator.push(context, MaterialPageRoute(
+                                builder: (_) => const InspectionListScreen(
+                                  initialFilter: InspectionFilter.today),
+                              )),
                             ),
                             const SizedBox(width: 12),
                             _StatCard(
@@ -305,11 +310,17 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                               color: overdueCount > 0
                                   ? AppTheme.danger
                                   : AppTheme.success,
+                              onTap: overdueCount > 0
+                                  ? () => Navigator.push(context, MaterialPageRoute(
+                                      builder: (_) => const InspectionListScreen(
+                                        initialFilter: InspectionFilter.failed),
+                                    ))
+                                  : null,
                             ),
                           ],
                         ),
                         // Overdue Inspections Section
-                        ..._buildOverdueSection(vans, inspections),
+                        ..._buildOverdueSection(context, vans, inspections),
                         // Inspection Summary with Percentages
                         ..._buildInspectionSummary(inspections, vans, overdueCount),
                         const SizedBox(height: 32),
@@ -390,7 +401,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   }
 }
 
-List<Widget> _buildOverdueSection(List<Van> vans, List<Inspection> inspections) {
+List<Widget> _buildOverdueSection(BuildContext context, List<Van> vans, List<Inspection> inspections) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
 
@@ -448,54 +459,61 @@ List<Widget> _buildOverdueSection(List<Van> vans, List<Inspection> inspections) 
       final freq = van.inspectionFrequencyDays;
       final freqLabel = freq == 1 ? 'daily' : freq == 7 ? 'weekly' : 'every $freq days';
 
-      return Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppTheme.danger.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.danger.withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppTheme.danger.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(10),
+      return GestureDetector(
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => VanInspectionHistoryScreen(van: van))),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppTheme.danger.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.danger.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppTheme.danger.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.warning_amber_rounded,
+                    color: AppTheme.danger, size: 24),
               ),
-              child: const Icon(Icons.warning_amber_rounded,
-                  color: AppTheme.danger, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    van.registration,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: AppTheme.textPrimary),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${van.assignedDriverName ?? "Unknown driver"} • $daysOverdue day${daysOverdue == 1 ? "" : "s"} overdue',
-                    style: const TextStyle(
-                        fontSize: 13, color: AppTheme.textSecondary),
-                  ),
-                  Text(
-                    'Expected: $freqLabel inspection',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.danger.withValues(alpha: 0.8)),
-                  ),
-                ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      van.registration,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppTheme.textPrimary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${van.assignedDriverName ?? "Unknown driver"} • $daysOverdue day${daysOverdue == 1 ? "" : "s"} overdue',
+                      style: const TextStyle(
+                          fontSize: 13, color: AppTheme.textSecondary),
+                    ),
+                    Text(
+                      'Expected: $freqLabel inspection',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.danger.withValues(alpha: 0.8)),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+            ],
+          ),
         ),
       );
     }),

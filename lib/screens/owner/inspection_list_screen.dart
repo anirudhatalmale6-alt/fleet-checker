@@ -7,7 +7,7 @@ import '../../services/data_service.dart';
 import '../../theme/app_theme.dart';
 import '../shared/inspection_detail_screen.dart';
 
-enum InspectionFilter { all, passed, failed }
+enum InspectionFilter { all, passed, failed, today }
 
 class InspectionListScreen extends StatefulWidget {
   final InspectionFilter initialFilter;
@@ -36,6 +36,8 @@ class _InspectionListScreenState extends State<InspectionListScreen> {
         return 'Passed Inspections';
       case InspectionFilter.failed:
         return 'Failed Inspections';
+      case InspectionFilter.today:
+        return "Today's Inspections";
       case InspectionFilter.all:
         return 'Inspection Reports';
     }
@@ -50,6 +52,14 @@ class _InspectionListScreenState extends State<InspectionListScreen> {
       case InspectionFilter.failed:
         return inspections
             .where((i) => i.status == InspectionStatus.failed)
+            .toList();
+      case InspectionFilter.today:
+        final now = DateTime.now();
+        return inspections
+            .where((i) =>
+                i.date.year == now.year &&
+                i.date.month == now.month &&
+                i.date.day == now.day)
             .toList();
       case InspectionFilter.all:
         return inspections;
@@ -81,6 +91,20 @@ class _InspectionListScreenState extends State<InspectionListScreen> {
                             : AppTheme.textSecondary),
                     const SizedBox(width: 8),
                     const Text('All'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: InspectionFilter.today,
+                child: Row(
+                  children: [
+                    Icon(Icons.today,
+                        size: 18,
+                        color: _filter == InspectionFilter.today
+                            ? AppTheme.accent
+                            : AppTheme.textSecondary),
+                    const SizedBox(width: 8),
+                    const Text('Today'),
                   ],
                 ),
               ),
